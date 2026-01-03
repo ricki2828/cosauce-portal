@@ -4,7 +4,7 @@ Handles campaigns, templates, message queue, and automation
 """
 
 import aiosqlite
-import anthropic
+from openai import OpenAI
 import json
 import uuid
 from datetime import datetime, timedelta
@@ -13,7 +13,7 @@ from dataclasses import dataclass, asdict
 from typing import Dict, List, Optional, Literal
 from enum import Enum
 
-from ..config import ANTHROPIC_API_KEY, DATA_DIR
+from ..config import OPENAI_API_KEY, DATA_DIR
 
 
 # Database path
@@ -90,9 +90,9 @@ class OutreachService:
 
     def __init__(self):
         self.db_path = OUTREACH_DB
-        self.anthropic_client = None
-        if ANTHROPIC_API_KEY:
-            self.anthropic_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        self.openai_client = None
+        if OPENAI_API_KEY:
+            self.openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
     async def init_db(self):
         """Initialize the database schema."""
@@ -657,7 +657,7 @@ class OutreachService:
         tone: str = "professional",
     ) -> str:
         """Use AI to help write a message template."""
-        if not self.anthropic_client:
+        if not self.openai_client:
             return "[AI unavailable - please write template manually]"
 
         char_limit = 300 if channel == "linkedin" else 2000
@@ -678,12 +678,12 @@ REQUIREMENTS:
 Return ONLY the template text, no explanation."""
 
         try:
-            message = self.anthropic_client.messages.create(
-                model="claude-sonnet-4-20250514",
+            message = self.openai_client.chat.completions.create(
+                model="gpt-4o",
                 max_tokens=500,
                 messages=[{"role": "user", "content": prompt}]
             )
-            return message.content[0].text
+            return message.choices[0].message.content
         except Exception as e:
             return f"[AI Error: {str(e)}]"
 
@@ -710,7 +710,7 @@ Return ONLY the template text, no explanation."""
         extra_context: Optional[Dict] = None,
     ) -> str:
         """Use AI to deeply personalize a message for a contact."""
-        if not self.anthropic_client:
+        if not self.openai_client:
             return await self.personalize_message(template_body, contact, extra_context)
 
         prompt = f"""You are personalizing a LinkedIn outreach message for a specific person.
@@ -734,12 +734,12 @@ REQUIREMENTS:
 Return ONLY the personalized message, no explanation."""
 
         try:
-            message = self.anthropic_client.messages.create(
-                model="claude-sonnet-4-20250514",
+            message = self.openai_client.chat.completions.create(
+                model="gpt-4o",
                 max_tokens=300,
                 messages=[{"role": "user", "content": prompt}]
             )
-            return message.content[0].text
+            return message.choices[0].message.content
         except Exception as e:
             # Fall back to basic personalization
             return await self.personalize_message(template_body, contact, extra_context)

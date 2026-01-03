@@ -4,7 +4,7 @@ Provides the foundation for outreach campaigns with company/contact data
 """
 
 import aiosqlite
-import anthropic
+from openai import OpenAI
 import json
 import uuid
 from datetime import datetime
@@ -12,7 +12,7 @@ from pathlib import Path
 from dataclasses import dataclass, asdict
 from typing import Dict, List, Optional, Literal
 
-from ..config import ANTHROPIC_API_KEY, DATA_DIR
+from ..config import OPENAI_API_KEY, DATA_DIR
 
 
 # Database path
@@ -72,9 +72,9 @@ class SalesService:
 
     def __init__(self):
         self.db_path = SALES_DB
-        self.anthropic_client = None
-        if ANTHROPIC_API_KEY:
-            self.anthropic_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        self.openai_client = None
+        if OPENAI_API_KEY:
+            self.openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
     async def init_db(self):
         """Initialize the database schema."""
@@ -604,7 +604,7 @@ class SalesService:
 
     async def research_company_with_ai(self, company_name: str, website: Optional[str] = None) -> Dict:
         """Use AI to research a company (placeholder for web scraping integration)."""
-        if not self.anthropic_client:
+        if not self.openai_client:
             return {"error": "AI not available"}
 
         prompt = f"""Based on your knowledge, provide information about the company "{company_name}".
@@ -620,19 +620,19 @@ Return a JSON object with these fields:
 Return ONLY valid JSON, no explanation."""
 
         try:
-            message = self.anthropic_client.messages.create(
-                model="claude-sonnet-4-20250514",
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o",
                 max_tokens=500,
                 messages=[{"role": "user", "content": prompt}]
             )
-            response = message.content[0].text
+            response_text = response.choices[0].message.content
 
             # Try to parse JSON
             import re
-            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
             if json_match:
                 return json.loads(json_match.group())
-            return {"raw_response": response}
+            return {"raw_response": response_text}
         except Exception as e:
             return {"error": str(e)}
 
