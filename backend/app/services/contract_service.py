@@ -12,9 +12,9 @@ from dataclasses import dataclass, field, asdict
 from typing import Dict, List, Optional
 from datetime import date, datetime
 import json
-import anthropic
+from openai import OpenAI
 
-from ..config import ANTHROPIC_API_KEY, CONTRACT_TEMPLATES_DIR, OUTPUTS_DIR
+from ..config import OPENAI_API_KEY, CONTRACT_TEMPLATES_DIR, OUTPUTS_DIR
 
 
 @dataclass
@@ -120,10 +120,10 @@ class ContractService:
         self.outputs_dir = OUTPUTS_DIR / "contracts"
         self.outputs_dir.mkdir(parents=True, exist_ok=True)
 
-        # Initialize Anthropic client if API key is available
-        self.anthropic_client = None
-        if ANTHROPIC_API_KEY:
-            self.anthropic_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        # Initialize OpenAI client if API key is available
+        self.openai_client = None
+        if OPENAI_API_KEY:
+            self.openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
     def list_templates(self) -> List[str]:
         """List available template files."""
@@ -292,8 +292,8 @@ class ContractService:
         return None
 
     def generate_ai_scope(self, bullets: str, project_name: str) -> str:
-        """Use Anthropic to generate formal scope language from bullet points."""
-        if not self.anthropic_client:
+        """Use OpenAI to generate formal scope language from bullet points."""
+        if not self.openai_client:
             return "[AI unavailable - please write scope manually]"
 
         if not bullets.strip():
@@ -316,18 +316,18 @@ Please transform these bullet points into formal contract language suitable for 
 Return ONLY the formatted scope text, no preamble or explanation."""
 
         try:
-            message = self.anthropic_client.messages.create(
-                model="claude-sonnet-4-20250514",
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o",
                 max_tokens=1000,
                 messages=[{"role": "user", "content": prompt}]
             )
-            return message.content[0].text
+            return response.choices[0].message.content
         except Exception as e:
             return f"[AI Error: {str(e)}]"
 
     def generate_ai_suggestions(self, contract_type: str, partial_data: dict) -> List[str]:
         """Generate AI suggestions for improving the contract."""
-        if not self.anthropic_client:
+        if not self.openai_client:
             return []
 
         prompt = f"""You are reviewing a {contract_type} contract draft. Based on this partial data:
@@ -337,13 +337,13 @@ Provide 2-3 brief suggestions (one sentence each) for improving or completing th
 Focus on practical business concerns. Return suggestions as a JSON array of strings."""
 
         try:
-            message = self.anthropic_client.messages.create(
-                model="claude-sonnet-4-20250514",
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o",
                 max_tokens=300,
                 messages=[{"role": "user", "content": prompt}]
             )
             # Parse suggestions from response
-            response_text = message.content[0].text
+            response_text = response.choices[0].message.content
             # Try to extract JSON array
             if "[" in response_text:
                 start = response_text.index("[")

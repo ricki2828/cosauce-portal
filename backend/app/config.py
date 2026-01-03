@@ -19,8 +19,8 @@ DATA_DIR.mkdir(exist_ok=True)
 AZURE_TENANT_ID = os.getenv('AZURE_TENANT_ID', '839a9215-f43f-4bcc-8e4e-c4c271b51e31')
 AZURE_CLIENT_ID = os.getenv('AZURE_CLIENT_ID', '')
 
-# Anthropic API
-ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')
+# OpenAI API
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
 
 # Allowed directors (email whitelist)
 ALLOWED_DIRECTORS = [
