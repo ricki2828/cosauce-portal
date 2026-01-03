@@ -57,7 +57,7 @@ export interface ContractHistoryItem {
 export const contractsApi = {
   getTemplates: () => api.get<ContractTemplate[]>('/api/contracts/templates'),
 
-  draft: (data: DraftRequest) => api.post<{ draft: string }>('/api/contracts/draft', data),
+  draft: (data: DraftRequest) => api.post<{ draft_scope: string; suggestions: string[] }>('/api/contracts/draft', data),
 
   generateMSA: (data: GenerateMSARequest) =>
     api.post('/api/contracts/generate/msa', data, { responseType: 'blob' }),
