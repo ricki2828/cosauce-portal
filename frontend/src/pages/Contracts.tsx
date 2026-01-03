@@ -80,17 +80,13 @@ export function Contracts() {
         response = await contractsApi.generateSOW({
           client_name: clientName,
           project_name: projectName,
-          scope_of_work: scopeOfWork,
-          deliverables,
-          timeline,
-          payment_terms: paymentTerms,
+          scope_formal: scopeOfWork,
         });
       } else {
         response = await contractsApi.generateShortForm({
           client_name: clientName,
           project_name: projectName,
-          scope_summary: scopeOfWork,
-          total_value: totalValue,
+          scope_formal: scopeOfWork,
         });
       }
 

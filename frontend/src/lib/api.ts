@@ -32,17 +32,13 @@ export interface GenerateMSARequest {
 export interface GenerateSOWRequest {
   client_name: string;
   project_name: string;
-  scope_of_work: string;
-  deliverables?: string;
-  timeline?: string;
-  payment_terms?: string;
+  scope_formal: string;
 }
 
 export interface GenerateShortFormRequest {
   client_name: string;
   project_name: string;
-  scope_summary: string;
-  total_value?: string;
+  scope_formal: string;
 }
 
 export interface ContractHistoryItem {
