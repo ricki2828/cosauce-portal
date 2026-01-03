@@ -51,8 +51,8 @@ export function Contracts() {
         project_name: projectName,
         scope_bullets: scopeBullets,
       });
-      setAiDraft(response.data.draft);
-      setScopeOfWork(response.data.draft);
+      setAiDraft(response.data.draft_scope);
+      setScopeOfWork(response.data.draft_scope);
     } catch (error) {
       console.error('Failed to generate draft:', error);
       alert('Failed to generate AI draft. Check console for details.');
