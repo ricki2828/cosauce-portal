@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://169.150.243.5:8004';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://arnold-shuttle-abilities-follow.trycloudflare.com';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
