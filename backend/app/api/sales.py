@@ -534,3 +534,186 @@ async def export_contacts(
             for c in contacts
         ]
     }
+
+
+# ==================== JOB SCAN ENDPOINTS ====================
+
+class JobScanRequest(BaseModel):
+    query: str = "bilingual customer service representative"
+    location: str = "Canada"
+    num_results: int = 50
+    enrich_with_apollo: bool = False
+
+
+class JobScanResponse(BaseModel):
+    success: bool
+    query: str
+    location: str
+    source: Optional[str]
+    total_jobs: int
+    companies_found: int
+    companies_created: int
+    companies_updated: int
+    signals_created: int
+
+
+@router.post("/scan", response_model=JobScanResponse)
+async def scan_for_job_signals(
+    request: JobScanRequest,
+    service: SalesService = Depends(get_service)
+):
+    """Scan job boards for companies hiring and create signals."""
+    result = await service.scan_for_companies(
+        query=request.query,
+        location=request.location,
+        num_results=request.num_results,
+        enrich_with_apollo=request.enrich_with_apollo,
+    )
+    return result
+
+
+# ==================== ENRICHMENT ENDPOINTS ====================
+
+@router.post("/companies/{company_id}/enrich")
+async def enrich_company_with_apollo(
+    company_id: str,
+    domain: Optional[str] = None,
+    service: SalesService = Depends(get_service)
+):
+    """Enrich a company with Apollo organization data."""
+    result = await service.enrich_company_with_apollo(company_id, domain)
+    return result
+
+
+@router.post("/companies/{company_id}/find-contacts")
+async def find_contacts_for_company(
+    company_id: str,
+    limit: int = Query(5, le=20),
+    service: SalesService = Depends(get_service)
+):
+    """Find decision-maker contacts for a company using Apollo."""
+    result = await service.find_contacts_for_company(company_id, limit)
+    return result
+
+
+@router.post("/companies/{company_id}/recalculate-score")
+async def recalculate_company_score(
+    company_id: str,
+    service: SalesService = Depends(get_service)
+):
+    """Recalculate a company's score based on all its signals."""
+    result = await service.recalculate_company_score(company_id)
+    return result
+
+
+# ==================== JOB SIGNAL ENDPOINTS ====================
+
+class JobSignalResponse(BaseModel):
+    id: str
+    company_id: str
+    company_name: Optional[str]
+    job_title: str
+    job_url: Optional[str]
+    location: Optional[str]
+    source: str
+    signal_type: str
+    signal_strength: int
+    posted_date: Optional[str]
+    discovered_at: str
+
+
+@router.get("/signals/jobs", response_model=List[JobSignalResponse])
+async def list_job_signals(
+    company_id: Optional[str] = None,
+    signal_type: Optional[str] = None,
+    limit: int = Query(100, le=500),
+    service: SalesService = Depends(get_service)
+):
+    """List job signals with optional filtering."""
+    signals = await service.get_job_signals(
+        company_id=company_id,
+        signal_type=signal_type,
+        limit=limit,
+    )
+    return [
+        JobSignalResponse(
+            id=s.id,
+            company_id=s.company_id,
+            company_name=s.company_name,
+            job_title=s.job_title,
+            job_url=s.job_url,
+            location=s.location,
+            source=s.source,
+            signal_type=s.signal_type,
+            signal_strength=s.signal_strength,
+            posted_date=s.posted_date,
+            discovered_at=s.discovered_at,
+        )
+        for s in signals
+    ]
+
+
+# ==================== PROJECT ENDPOINTS ====================
+
+class ProjectCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    target_criteria: Optional[dict] = None
+    signal_weights: Optional[dict] = None
+
+
+class ProjectResponse(BaseModel):
+    id: str
+    name: str
+    description: Optional[str]
+    target_criteria: dict
+    signal_weights: dict
+    status: str
+    created_at: str
+    updated_at: str
+
+
+@router.post("/projects", response_model=ProjectResponse)
+async def create_project(
+    request: ProjectCreate,
+    service: SalesService = Depends(get_service)
+):
+    """Create a new sales project."""
+    project = await service.create_project(
+        name=request.name,
+        description=request.description,
+        target_criteria=request.target_criteria,
+        signal_weights=request.signal_weights,
+    )
+    return ProjectResponse(
+        id=project.id,
+        name=project.name,
+        description=project.description,
+        target_criteria=project.target_criteria,
+        signal_weights=project.signal_weights,
+        status=project.status,
+        created_at=project.created_at,
+        updated_at=project.updated_at,
+    )
+
+
+@router.get("/projects", response_model=List[ProjectResponse])
+async def list_projects(
+    status: Optional[str] = None,
+    service: SalesService = Depends(get_service)
+):
+    """List all sales projects."""
+    projects = await service.get_projects(status=status)
+    return [
+        ProjectResponse(
+            id=p.id,
+            name=p.name,
+            description=p.description,
+            target_criteria=p.target_criteria,
+            signal_weights=p.signal_weights,
+            status=p.status,
+            created_at=p.created_at,
+            updated_at=p.updated_at,
+        )
+        for p in projects
+    ]

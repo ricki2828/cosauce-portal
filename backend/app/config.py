@@ -22,6 +22,14 @@ AZURE_CLIENT_ID = os.getenv('AZURE_CLIENT_ID', '')
 # OpenAI API
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
 
+# External Sales APIs
+RAPIDAPI_KEY = os.getenv('RAPIDAPI_KEY', '')  # For JSearch job board API
+APOLLO_API_KEY = os.getenv('APOLLO_API_KEY', '')  # For contact enrichment
+
+# Job Search Defaults
+JOB_SEARCH_LOCATION = os.getenv('JOB_SEARCH_LOCATION', 'Canada')
+JOB_SEARCH_DEFAULT_QUERY = os.getenv('JOB_SEARCH_DEFAULT_QUERY', 'bilingual customer service representative')
+
 # Allowed directors (email whitelist)
 ALLOWED_DIRECTORS = [
     'ricki@cosauce.co',

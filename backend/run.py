@@ -10,6 +10,7 @@ if __name__ == "__main__":
         "app.main:app",
         host=HOST,
         port=PORT,
-        reload=True,
+        reload=False,  # Disabled for production - saves memory
+        workers=1,
         log_level="info",
     )

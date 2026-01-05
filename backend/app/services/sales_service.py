@@ -1,6 +1,7 @@
 """
 Sales Service - Company research, contact management, and signal tracking
 Provides the foundation for outreach campaigns with company/contact data
+Extended with job search, Apollo enrichment, and signal scoring.
 """
 
 import aiosqlite
@@ -9,8 +10,8 @@ import json
 import uuid
 from datetime import datetime
 from pathlib import Path
-from dataclasses import dataclass, asdict
-from typing import Dict, List, Optional, Literal
+from dataclasses import dataclass, asdict, field
+from typing import Dict, List, Optional, Literal, Tuple
 
 from ..config import OPENAI_API_KEY, DATA_DIR
 
@@ -34,6 +35,13 @@ class Company:
     updated_at: str
     tags: List[str]
     custom_fields: Dict
+    # Extended fields for scoring and enrichment
+    domain: Optional[str] = None
+    score: int = 0
+    score_breakdown: Dict = field(default_factory=dict)
+    apollo_id: Optional[str] = None
+    employee_count: Optional[int] = None
+    status: str = "new"  # new, target, contacted, qualified, meeting, won, lost
 
 
 @dataclass
@@ -65,6 +73,41 @@ class Signal:
     detected_at: str
     # Denormalized
     company_name: Optional[str] = None
+
+
+@dataclass
+class JobSignal:
+    """Job posting signal for a company."""
+    id: str
+    company_id: str
+    job_title: str
+    job_url: Optional[str]
+    job_description: Optional[str]
+    location: Optional[str]
+    source: str
+    posted_date: Optional[str]
+    discovered_at: str
+    signal_type: str
+    signal_strength: int
+    is_active: bool = True
+    # Denormalized
+    company_name: Optional[str] = None
+
+
+@dataclass
+class SalesProject:
+    """Targeting project for organizing outbound efforts."""
+    id: str
+    name: str
+    description: Optional[str]
+    target_criteria: Dict
+    signal_weights: Dict
+    status: str  # active, paused, completed
+    created_at: str
+    updated_at: str
+    # Stats
+    total_companies: int = 0
+    total_contacts: int = 0
 
 
 class SalesService:
@@ -130,10 +173,72 @@ class SalesService:
                 )
             """)
 
+            # Job signals table (for job postings)
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS job_signals (
+                    id TEXT PRIMARY KEY,
+                    company_id TEXT NOT NULL,
+                    job_title TEXT NOT NULL,
+                    job_url TEXT,
+                    job_description TEXT,
+                    location TEXT,
+                    source TEXT,
+                    posted_date TEXT,
+                    discovered_at TEXT NOT NULL,
+                    signal_type TEXT,
+                    signal_strength INTEGER DEFAULT 1,
+                    is_active INTEGER DEFAULT 1,
+                    FOREIGN KEY (company_id) REFERENCES companies(id)
+                )
+            """)
+
+            # Sales projects table
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS sales_projects (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    description TEXT,
+                    target_criteria TEXT DEFAULT '{}',
+                    signal_weights TEXT DEFAULT '{}',
+                    status TEXT DEFAULT 'active',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+            """)
+
+            # Add new columns to companies if they don't exist
+            # SQLite doesn't support ADD COLUMN IF NOT EXISTS, so we check first
+            try:
+                await db.execute("ALTER TABLE companies ADD COLUMN domain TEXT")
+            except:
+                pass
+            try:
+                await db.execute("ALTER TABLE companies ADD COLUMN score INTEGER DEFAULT 0")
+            except:
+                pass
+            try:
+                await db.execute("ALTER TABLE companies ADD COLUMN score_breakdown TEXT DEFAULT '{}'")
+            except:
+                pass
+            try:
+                await db.execute("ALTER TABLE companies ADD COLUMN apollo_id TEXT")
+            except:
+                pass
+            try:
+                await db.execute("ALTER TABLE companies ADD COLUMN employee_count INTEGER")
+            except:
+                pass
+            try:
+                await db.execute("ALTER TABLE companies ADD COLUMN status TEXT DEFAULT 'new'")
+            except:
+                pass
+
             # Create indexes
             await db.execute("CREATE INDEX IF NOT EXISTS idx_contacts_company ON contacts(company_id)")
             await db.execute("CREATE INDEX IF NOT EXISTS idx_signals_company ON signals(company_id)")
             await db.execute("CREATE INDEX IF NOT EXISTS idx_companies_industry ON companies(industry)")
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_job_signals_company ON job_signals(company_id)")
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_companies_score ON companies(score)")
 
             await db.commit()
 
@@ -635,6 +740,467 @@ Return ONLY valid JSON, no explanation."""
             return {"raw_response": response_text}
         except Exception as e:
             return {"error": str(e)}
+
+    # ==================== JOB SIGNAL METHODS ====================
+
+    async def create_job_signal(
+        self,
+        company_id: str,
+        job_title: str,
+        job_url: Optional[str] = None,
+        job_description: Optional[str] = None,
+        location: Optional[str] = None,
+        source: str = "jsearch",
+        posted_date: Optional[str] = None,
+        signal_type: str = "general_hiring",
+        signal_strength: int = 1,
+    ) -> JobSignal:
+        """Create a new job signal for a company."""
+        signal_id = f"jsig_{uuid.uuid4().hex[:12]}"
+        now = datetime.utcnow().isoformat()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("""
+                INSERT INTO job_signals
+                (id, company_id, job_title, job_url, job_description, location, source, posted_date, discovered_at, signal_type, signal_strength)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                signal_id, company_id, job_title, job_url, job_description,
+                location, source, posted_date, now, signal_type, signal_strength
+            ))
+            await db.commit()
+
+        company = await self.get_company(company_id)
+
+        return JobSignal(
+            id=signal_id,
+            company_id=company_id,
+            job_title=job_title,
+            job_url=job_url,
+            job_description=job_description,
+            location=location,
+            source=source,
+            posted_date=posted_date,
+            discovered_at=now,
+            signal_type=signal_type,
+            signal_strength=signal_strength,
+            company_name=company.name if company else None,
+        )
+
+    async def get_job_signals(
+        self,
+        company_id: Optional[str] = None,
+        signal_type: Optional[str] = None,
+        limit: int = 100,
+    ) -> List[JobSignal]:
+        """Get job signals with optional filtering."""
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+
+            query = """
+                SELECT js.*, c.name as company_name
+                FROM job_signals js
+                JOIN companies c ON js.company_id = c.id
+                WHERE js.is_active = 1
+            """
+            params = []
+
+            if company_id:
+                query += " AND js.company_id = ?"
+                params.append(company_id)
+            if signal_type:
+                query += " AND js.signal_type = ?"
+                params.append(signal_type)
+
+            query += " ORDER BY js.discovered_at DESC LIMIT ?"
+            params.append(limit)
+
+            cursor = await db.execute(query, params)
+            rows = await cursor.fetchall()
+
+        return [
+            JobSignal(
+                id=row["id"],
+                company_id=row["company_id"],
+                job_title=row["job_title"],
+                job_url=row["job_url"],
+                job_description=row["job_description"],
+                location=row["location"],
+                source=row["source"],
+                posted_date=row["posted_date"],
+                discovered_at=row["discovered_at"],
+                signal_type=row["signal_type"],
+                signal_strength=row["signal_strength"],
+                is_active=bool(row["is_active"]),
+                company_name=row["company_name"],
+            )
+            for row in rows
+        ]
+
+    # ==================== PROJECT METHODS ====================
+
+    async def create_project(
+        self,
+        name: str,
+        description: Optional[str] = None,
+        target_criteria: Optional[Dict] = None,
+        signal_weights: Optional[Dict] = None,
+    ) -> SalesProject:
+        """Create a new sales project."""
+        project_id = f"proj_{uuid.uuid4().hex[:12]}"
+        now = datetime.utcnow().isoformat()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("""
+                INSERT INTO sales_projects
+                (id, name, description, target_criteria, signal_weights, status, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, 'active', ?, ?)
+            """, (
+                project_id, name, description,
+                json.dumps(target_criteria or {}),
+                json.dumps(signal_weights or {}),
+                now, now
+            ))
+            await db.commit()
+
+        return SalesProject(
+            id=project_id,
+            name=name,
+            description=description,
+            target_criteria=target_criteria or {},
+            signal_weights=signal_weights or {},
+            status="active",
+            created_at=now,
+            updated_at=now,
+        )
+
+    async def get_projects(self, status: Optional[str] = None) -> List[SalesProject]:
+        """Get all projects."""
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+
+            if status:
+                cursor = await db.execute(
+                    "SELECT * FROM sales_projects WHERE status = ? ORDER BY updated_at DESC",
+                    (status,)
+                )
+            else:
+                cursor = await db.execute(
+                    "SELECT * FROM sales_projects ORDER BY updated_at DESC"
+                )
+            rows = await cursor.fetchall()
+
+        return [
+            SalesProject(
+                id=row["id"],
+                name=row["name"],
+                description=row["description"],
+                target_criteria=json.loads(row["target_criteria"]) if row["target_criteria"] else {},
+                signal_weights=json.loads(row["signal_weights"]) if row["signal_weights"] else {},
+                status=row["status"],
+                created_at=row["created_at"],
+                updated_at=row["updated_at"],
+            )
+            for row in rows
+        ]
+
+    # ==================== SCAN & ENRICHMENT ORCHESTRATION ====================
+
+    async def scan_for_companies(
+        self,
+        query: str,
+        location: str = "Canada",
+        num_results: int = 50,
+        enrich_with_apollo: bool = False,
+    ) -> Dict:
+        """
+        Scan job boards for companies and create/update company records with signals.
+
+        Args:
+            query: Job search query
+            location: Geographic filter
+            num_results: Max results to fetch
+            enrich_with_apollo: Whether to enrich with Apollo data
+
+        Returns:
+            Dict with scan results and stats
+        """
+        from .job_search_service import get_job_search_service
+        from .scoring_service import classify_job_signal
+
+        job_service = get_job_search_service()
+        results = await job_service.search_jobs(query, location, num_results)
+
+        if not results.get("success"):
+            return {"success": False, "error": results.get("error", "Job search failed")}
+
+        jobs = results.get("jobs", [])
+        grouped = job_service.group_jobs_by_company(jobs)
+
+        companies_created = 0
+        companies_updated = 0
+        signals_created = 0
+
+        for company_name, company_jobs in grouped.items():
+            # Try to find existing company
+            existing = await self.get_companies(search=company_name, limit=1)
+
+            if existing:
+                company = existing[0]
+                companies_updated += 1
+            else:
+                # Create new company
+                first_job = company_jobs[0]
+                company = await self.create_company(
+                    name=company_name,
+                    headquarters=first_job.get("location"),
+                )
+                companies_created += 1
+
+            # Create job signals
+            for job in company_jobs:
+                signal_type, signal_strength = classify_job_signal(
+                    job.get("title", ""),
+                    job.get("description", "")
+                )
+
+                await self.create_job_signal(
+                    company_id=company.id,
+                    job_title=job.get("title", ""),
+                    job_url=job.get("job_url"),
+                    job_description=job.get("description"),
+                    location=job.get("location"),
+                    source=job.get("source", "jsearch"),
+                    posted_date=job.get("posted_date"),
+                    signal_type=signal_type,
+                    signal_strength=signal_strength,
+                )
+                signals_created += 1
+
+            # Recalculate company score
+            await self.recalculate_company_score(company.id)
+
+        # Optional Apollo enrichment for top companies
+        if enrich_with_apollo:
+            # Get top 10 companies by score
+            top_companies = await self.get_companies(limit=10)
+            for company in top_companies:
+                if company.website:
+                    domain = company.website.replace("https://", "").replace("http://", "").split("/")[0]
+                    await self.enrich_company_with_apollo(company.id, domain)
+
+        return {
+            "success": True,
+            "query": query,
+            "location": location,
+            "source": results.get("source"),
+            "total_jobs": len(jobs),
+            "companies_found": len(grouped),
+            "companies_created": companies_created,
+            "companies_updated": companies_updated,
+            "signals_created": signals_created,
+        }
+
+    async def enrich_company_with_apollo(
+        self,
+        company_id: str,
+        domain: Optional[str] = None,
+    ) -> Dict:
+        """
+        Enrich a company with Apollo organization data.
+
+        Args:
+            company_id: Company ID to enrich
+            domain: Company domain (extracted from website if not provided)
+
+        Returns:
+            Dict with enrichment results
+        """
+        from .apollo_service import get_apollo_service
+
+        company = await self.get_company(company_id)
+        if not company:
+            return {"success": False, "error": "Company not found"}
+
+        # Extract domain from website if not provided
+        if not domain and company.website:
+            domain = company.website.replace("https://", "").replace("http://", "").split("/")[0]
+
+        if not domain:
+            return {"success": False, "error": "No domain available for enrichment"}
+
+        apollo = await get_apollo_service()
+
+        if not apollo.is_configured():
+            return {"success": False, "error": "Apollo API key not configured"}
+
+        try:
+            org = await apollo.get_organization(domain)
+
+            if org:
+                # Update company with Apollo data
+                await self.update_company(
+                    company_id,
+                    industry=org.industry or company.industry,
+                    size=f"{org.employee_count}" if org.employee_count else company.size,
+                    linkedin_url=org.linkedin_url or company.linkedin_url,
+                )
+
+                # Update extended fields
+                async with aiosqlite.connect(self.db_path) as db:
+                    await db.execute("""
+                        UPDATE companies SET
+                            domain = ?,
+                            apollo_id = ?,
+                            employee_count = ?,
+                            updated_at = ?
+                        WHERE id = ?
+                    """, (domain, org.apollo_id, org.employee_count, datetime.utcnow().isoformat(), company_id))
+                    await db.commit()
+
+                return {
+                    "success": True,
+                    "company_id": company_id,
+                    "domain": domain,
+                    "apollo_id": org.apollo_id,
+                    "employee_count": org.employee_count,
+                    "industry": org.industry,
+                }
+
+            return {"success": False, "error": "No organization data found"}
+
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    async def find_contacts_for_company(
+        self,
+        company_id: str,
+        limit: int = 5,
+    ) -> Dict:
+        """
+        Find decision-maker contacts for a company using Apollo.
+
+        Args:
+            company_id: Company ID
+            limit: Max contacts to find
+
+        Returns:
+            Dict with contacts found
+        """
+        from .apollo_service import get_apollo_service
+
+        company = await self.get_company(company_id)
+        if not company:
+            return {"success": False, "error": "Company not found"}
+
+        # Get domain
+        domain = None
+        if company.website:
+            domain = company.website.replace("https://", "").replace("http://", "").split("/")[0]
+
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                "SELECT domain FROM companies WHERE id = ?",
+                (company_id,)
+            )
+            row = await cursor.fetchone()
+            if row and row[0]:
+                domain = row[0]
+
+        if not domain:
+            return {"success": False, "error": "No domain available for contact search"}
+
+        apollo = await get_apollo_service()
+        contacts = await apollo.search_contacts(domain, company.name, limit=limit)
+
+        # Create contact records
+        created_contacts = []
+        for ac in contacts:
+            contact = await self.create_contact(
+                name=ac.full_name or f"{ac.first_name} {ac.last_name}",
+                company_id=company_id,
+                title=ac.title,
+                email=ac.email,
+                linkedin_url=ac.linkedin_url,
+                notes=f"Apollo ID: {ac.apollo_id}" if ac.apollo_id else None,
+            )
+            created_contacts.append({
+                "id": contact.id,
+                "name": contact.name,
+                "title": contact.title,
+                "email": contact.email,
+                "linkedin_url": contact.linkedin_url,
+                "apollo_id": ac.apollo_id,
+                "revealed": ac.revealed,
+            })
+
+        return {
+            "success": True,
+            "company_id": company_id,
+            "contacts_found": len(created_contacts),
+            "contacts": created_contacts,
+        }
+
+    async def recalculate_company_score(self, company_id: str) -> Dict:
+        """
+        Recalculate a company's score based on all its signals.
+
+        Args:
+            company_id: Company ID to recalculate
+
+        Returns:
+            Dict with new score breakdown
+        """
+        from .scoring_service import calculate_company_score
+
+        company = await self.get_company(company_id)
+        if not company:
+            return {"success": False, "error": "Company not found"}
+
+        # Get all job signals for the company
+        job_signals = await self.get_job_signals(company_id=company_id)
+
+        # Convert to signal dicts for scoring
+        signals = [
+            {"signal_type": js.signal_type, "signal_strength": js.signal_strength}
+            for js in job_signals
+        ]
+
+        # Calculate score
+        breakdown = calculate_company_score(signals, company.industry)
+
+        # Update company with new score
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("""
+                UPDATE companies SET
+                    score = ?,
+                    score_breakdown = ?,
+                    updated_at = ?
+                WHERE id = ?
+            """, (
+                breakdown.total_score,
+                json.dumps({
+                    "cx_signals": breakdown.cx_signals,
+                    "growth_signals": breakdown.growth_signals,
+                    "funding_signals": breakdown.funding_signals,
+                    "industry_bonus": breakdown.industry_bonus,
+                    "signal_count": breakdown.signal_count,
+                }),
+                datetime.utcnow().isoformat(),
+                company_id
+            ))
+            await db.commit()
+
+        return {
+            "success": True,
+            "company_id": company_id,
+            "score": breakdown.total_score,
+            "breakdown": {
+                "cx_signals": breakdown.cx_signals,
+                "growth_signals": breakdown.growth_signals,
+                "signal_count": breakdown.signal_count,
+            }
+        }
 
 
 # Singleton instance
