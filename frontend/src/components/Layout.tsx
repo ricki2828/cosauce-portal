@@ -1,11 +1,14 @@
 import { Link, useLocation, Outlet } from 'react-router-dom';
-import { FileText, Users, Megaphone, LayoutDashboard, Settings } from 'lucide-react';
+import { FileText, Users, Megaphone, LayoutDashboard, Settings, Flag, UserCog } from 'lucide-react';
+import UserMenu from './auth/UserMenu';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Priorities', href: '/priorities', icon: Flag },
   { name: 'Contracts', href: '/contracts', icon: FileText },
   { name: 'Sales', href: '/sales', icon: Users },
   { name: 'Outreach', href: '/outreach', icon: Megaphone },
+  { name: 'People', href: '/people', icon: UserCog },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
@@ -45,15 +48,7 @@ export function Layout() {
 
         {/* User info */}
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
-          <div className="flex items-center">
-            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
-              R
-            </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-900">Ricki</p>
-              <p className="text-xs text-gray-500">Director</p>
-            </div>
-          </div>
+          <UserMenu />
         </div>
       </div>
 
