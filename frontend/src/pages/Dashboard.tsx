@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Flag, BarChart3, Users, TrendingUp } from 'lucide-react';
 import { prioritiesApi, businessUpdatesApi, peopleApi, salesApi } from '../lib/api';
-import type { Requisition, NewHire, Company, JobSignal } from '../lib/api';
+import type { Requisition, NewHire, Company } from '../lib/api';
 import type { Priority } from '../lib/priorities-types';
 import type { DashboardData, ShiftUpdate } from '../lib/business-updates-types';
 import {
@@ -35,7 +35,6 @@ export function Dashboard() {
 
   // Sales state
   const [salesCompanies, setSalesCompanies] = useState<Company[]>([]);
-  const [salesSignals, setSalesSignals] = useState<JobSignal[]>([]);
   const [salesLoading, setSalesLoading] = useState(true);
   const [salesError, setSalesError] = useState<string | null>(null);
 
@@ -111,12 +110,8 @@ export function Dashboard() {
     try {
       setSalesLoading(true);
       setSalesError(null);
-      const [companiesRes, signalsRes] = await Promise.all([
-        salesApi.getCompanies({ limit: 100 }),
-        salesApi.getJobSignals({ limit: 100 }),
-      ]);
+      const companiesRes = await salesApi.getCompanies({ limit: 100 });
       setSalesCompanies(companiesRes.data);
-      setSalesSignals(signalsRes.data);
     } catch (err: any) {
       console.error('Failed to load sales data:', err);
       setSalesError(err.response?.data?.detail || 'Failed to load sales data');
@@ -133,7 +128,7 @@ export function Dashboard() {
       const updates = response.data;
       if (updates && updates.length > 0) {
         // Find most recent update with non-empty commentary
-        const withCommentary = updates.find(u => u.commentary && u.commentary.trim().length > 0);
+        const withCommentary = updates.find((u: ShiftUpdate) => u.commentary && u.commentary.trim().length > 0);
         setRecentCommentary(withCommentary || updates[0]);
       }
     } catch (err: any) {
