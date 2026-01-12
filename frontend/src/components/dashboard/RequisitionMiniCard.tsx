@@ -23,7 +23,7 @@ export function RequisitionMiniCard({ requisition }: RequisitionMiniCardProps) {
   return (
     <Link
       to="/people"
-      className="block bg-white rounded-lg border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all"
+      className="block bg-white rounded-lg border border-gray-200 p-3 hover:border-gray-300 hover:shadow-sm transition-all"
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-2 mb-3">

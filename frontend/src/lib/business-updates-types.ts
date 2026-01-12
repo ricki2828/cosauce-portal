@@ -51,10 +51,11 @@ export interface TeamLeader {
   id: string;
   name: string;
   email: string;
-  phone?: string;
-  account_id: string;
-  account_name?: string;
+  account_ids: string[];  // Multi-account support
   accounts?: { id: string; name: string; code: string }[];
+  manager_id?: string;
+  teams_user_id?: string;
+  teams_conversation_id?: string;
   shift_start?: string;  // Time in HH:MM format (e.g., "08:00")
   shift_end?: string;    // Time in HH:MM format (e.g., "17:00")
   timezone?: string;     // IANA timezone (e.g., "America/New_York")
@@ -68,9 +69,9 @@ export interface TeamLeader {
 export interface TeamLeaderCreate {
   name: string;
   email: string;
-  phone?: string;
-  account_id: string;
-  account_ids?: string[];
+  account_ids: string[];  // Required: must have at least 1 account
+  manager_id?: string;
+  teams_user_id?: string;
   shift_start?: string;  // Time in HH:MM format
   shift_end?: string;    // Time in HH:MM format
   timezone?: string;     // IANA timezone
@@ -81,9 +82,10 @@ export interface TeamLeaderCreate {
 export interface TeamLeaderUpdate {
   name?: string;
   email?: string;
-  phone?: string;
-  account_id?: string;
-  account_ids?: string[];
+  account_ids?: string[];  // Optional: can update account assignments
+  manager_id?: string;
+  teams_user_id?: string;
+  teams_conversation_id?: string;
   shift_start?: string;  // Time in HH:MM format
   shift_end?: string;    // Time in HH:MM format
   timezone?: string;     // IANA timezone

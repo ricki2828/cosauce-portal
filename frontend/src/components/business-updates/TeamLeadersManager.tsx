@@ -12,8 +12,6 @@ export function TeamLeadersManager() {
   const [formData, setFormData] = useState<TeamLeaderCreate>({
     name: '',
     email: '',
-    phone: '',
-    account_id: "",
     account_ids: [],
     shift_start: '',
     shift_end: '',
@@ -73,8 +71,6 @@ export function TeamLeadersManager() {
     setFormData({
       name: '',
       email: '',
-      phone: '',
-      account_id: "",
       account_ids: [],
       shift_start: '',
       shift_end: '',
@@ -90,9 +86,7 @@ export function TeamLeadersManager() {
     setFormData({
       name: leader.name,
       email: leader.email,
-      phone: leader.phone || '',
-      account_id: leader.account_id,
-      account_ids: leader.accounts?.map(a => a.id) || [],
+      account_ids: leader.accounts?.map(a => a.id) || leader.account_ids || [],
       shift_start: leader.shift_start || '',
       shift_end: leader.shift_end || '',
       timezone: leader.timezone || 'UTC',
@@ -230,8 +224,8 @@ export function TeamLeadersManager() {
                   </td>
                   <td className="px-3 md:px-6 py-3 md:py-4">
                     <div className="text-xs md:text-sm text-gray-900 truncate max-w-[150px] md:max-w-none">{leader.email}</div>
-                    {leader.phone && (
-                      <div className="text-xs text-gray-500 hidden md:block">{leader.phone}</div>
+                    {leader.whatsapp_number && (
+                      <div className="text-xs text-gray-500 hidden md:block">WhatsApp: {leader.whatsapp_number}</div>
                     )}
                   </td>
                   <td className="px-3 md:px-6 py-3 md:py-4 hidden md:table-cell">
@@ -372,21 +366,8 @@ export function TeamLeadersManager() {
                     placeholder="john.smith@example.com"
                   />
                   <p className="mt-1 text-xs text-gray-500">
-                    Must be unique within each assigned account
+                    Must be unique across all team leaders
                   </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Phone (optional)
-                  </label>
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="+65 9123 4567"
-                  />
                 </div>
               </div>
 

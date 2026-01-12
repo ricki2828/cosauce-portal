@@ -32,10 +32,10 @@ export function PriorityCard({ priority }: PriorityCardProps) {
   return (
     <Link
       to="/priorities"
-      className="block bg-white rounded-lg border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all"
+      className="block bg-white rounded-lg border border-gray-200 p-3 hover:border-gray-300 hover:shadow-sm transition-all"
     >
       {/* Header */}
-      <div className="flex items-start justify-between gap-2 mb-3">
+      <div className="flex items-start justify-between gap-2 mb-2">
         <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 flex-1">
           {priority.title}
         </h3>

@@ -3,7 +3,7 @@ import { Flag, BarChart3, Users, TrendingUp, Star, Target, Mail, Calendar } from
 import { prioritiesApi, businessUpdatesApi, peopleApi, salesApi } from '../lib/api';
 import type { Requisition, NewHire, Company, JobSignal } from '../lib/api';
 import type { Priority } from '../lib/priorities-types';
-import type { DashboardData } from '../lib/business-updates-types';
+import type { DashboardData, ShiftUpdate } from '../lib/business-updates-types';
 import {
   DashboardSection,
   PriorityCard,
@@ -38,6 +38,9 @@ export function Dashboard() {
   const [salesSignals, setSalesSignals] = useState<JobSignal[]>([]);
   const [salesLoading, setSalesLoading] = useState(true);
   const [salesError, setSalesError] = useState<string | null>(null);
+
+  // Shift update state (for recent commentary)
+  const [recentCommentary, setRecentCommentary] = useState<ShiftUpdate | null>(null);
 
   // Load priorities
   const loadPriorities = async () => {
@@ -122,12 +125,30 @@ export function Dashboard() {
     }
   };
 
+  // Load recent shift update for commentary
+  const loadRecentCommentary = async () => {
+    try {
+      const response = await businessUpdatesApi.getShiftUpdates({ });
+      // Get the most recent shift update with commentary
+      const updates = response.data;
+      if (updates && updates.length > 0) {
+        // Find most recent update with non-empty commentary
+        const withCommentary = updates.find(u => u.commentary && u.commentary.trim().length > 0);
+        setRecentCommentary(withCommentary || updates[0]);
+      }
+    } catch (err: any) {
+      console.error('Failed to load shift updates:', err);
+      // Don't set error state, just silently fail for commentary
+    }
+  };
+
   useEffect(() => {
     loadPriorities();
     loadPerformance();
     loadRequisitions();
     loadNewHires();
     loadSales();
+    loadRecentCommentary();
   }, []);
 
   // Compute pipeline stages from sales companies
@@ -171,7 +192,7 @@ export function Dashboard() {
         isEmpty={priorities.length === 0}
         emptyMessage="No active priorities. Add one in the Priorities page."
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3">
           {priorities.map((priority) => (
             <PriorityCard key={priority.id} priority={priority} />
           ))}
@@ -185,14 +206,12 @@ export function Dashboard() {
         loading={performanceLoading}
         error={performanceError}
         onRetry={loadPerformance}
-        isEmpty={!performance || performance.accounts.length === 0}
+        isEmpty={!performance}
         emptyMessage="No performance data available."
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {performance?.accounts.map((account) => (
-            <PerformanceCard key={account.account_id} account={account} />
-          ))}
-        </div>
+        {performance && (
+          <PerformanceCard dashboard={performance} recentCommentary={recentCommentary} />
+        )}
       </DashboardSection>
 
       {/* Section 3: People */}
