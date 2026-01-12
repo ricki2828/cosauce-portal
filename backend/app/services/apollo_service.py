@@ -193,13 +193,21 @@ class ApolloService:
 
             org = data.get("organization")
             if org:
+                # Calculate employee growth from employee ranges if available
+                employee_growth = None
+                if org.get("estimated_num_employees"):
+                    # Apollo provides employee range changes like "50-200" -> "200-500"
+                    # We can estimate growth percentage if we have historical data
+                    # For now, leave as None since Apollo doesn't provide direct growth rate
+                    pass
+
                 return ApolloOrganization(
                     apollo_id=org.get("id", ""),
                     name=org.get("name", ""),
                     domain=org.get("primary_domain", domain),
                     industry=org.get("industry"),
                     employee_count=org.get("estimated_num_employees"),
-                    employee_growth=org.get("total_funding_amount"),  # Apollo doesn't always have growth
+                    employee_growth=employee_growth,  # Apollo doesn't provide growth rate directly
                     linkedin_url=org.get("linkedin_url"),
                     website_url=org.get("website_url"),
                     city=org.get("city"),

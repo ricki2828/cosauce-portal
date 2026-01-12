@@ -306,6 +306,18 @@ export interface EodReport {
   emailed_to_execs: boolean;
 }
 
+export interface ShiftSettings {
+  shift_sos_deadline_buffer_hours: number;
+  shift_eos_deadline_buffer_hours: number;
+  exec_email_list: string;
+}
+
+export interface ShiftSettingsUpdate {
+  shift_sos_deadline_buffer_hours?: number;
+  shift_eos_deadline_buffer_hours?: number;
+  exec_email_list?: string;
+}
+
 // ============================================
 // Paginated Responses
 // ============================================

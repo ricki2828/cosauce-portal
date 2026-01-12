@@ -867,4 +867,10 @@ export const businessUpdatesApi = {
 
   getEodReport: (reportId: string) =>
     api.get(`/api/shift/eod-reports/${reportId}`),
+
+  getShiftSettings: () =>
+    api.get('/api/shift/settings'),
+
+  updateShiftSettings: (data: any) =>
+    api.put('/api/shift/settings', data),
 };

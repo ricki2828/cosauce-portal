@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, FileText } from 'lucide-react';
+import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, FileText, Settings } from 'lucide-react';
 import { businessUpdatesApi } from '../../lib/api';
-import type { ShiftUpdate, ComplianceStats, EodReport } from '../../lib/business-updates-types';
+import type { ShiftUpdate, ComplianceStats, EodReport, ShiftSettings } from '../../lib/business-updates-types';
 
 export function ShiftReporting() {
-  const [activeSection, setActiveSection] = useState<'compliance' | 'updates' | 'reports'>('compliance');
+  const [activeSection, setActiveSection] = useState<'compliance' | 'updates' | 'reports' | 'settings'>('compliance');
 
   // Compliance state
   const [complianceDate, setComplianceDate] = useState(new Date().toISOString().split('T')[0]);
@@ -23,6 +23,15 @@ export function ShiftReporting() {
   const [dateTo, setDateTo] = useState('');
   const [reportType, setReportType] = useState<string>('');
   const [loadingReports, setLoadingReports] = useState(false);
+
+  // Settings state
+  const [settings, setSettings] = useState<ShiftSettings>({
+    shift_sos_deadline_buffer_hours: 1,
+    shift_eos_deadline_buffer_hours: 1,
+    exec_email_list: '',
+  });
+  const [loadingSettings, setLoadingSettings] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   // Load compliance stats
   useEffect(() => {
@@ -44,6 +53,13 @@ export function ShiftReporting() {
       loadEodReports();
     }
   }, [dateFrom, dateTo, reportType, activeSection]);
+
+  // Load settings
+  useEffect(() => {
+    if (activeSection === 'settings') {
+      loadSettings();
+    }
+  }, [activeSection]);
 
   const loadComplianceStats = async () => {
     try {
@@ -104,6 +120,31 @@ export function ShiftReporting() {
     } catch (error) {
       console.error('Failed to generate EOD report:', error);
       alert('Failed to generate EOD report.');
+    }
+  };
+
+  const loadSettings = async () => {
+    try {
+      setLoadingSettings(true);
+      const response = await businessUpdatesApi.getShiftSettings();
+      setSettings(response.data);
+    } catch (error) {
+      console.error('Failed to load settings:', error);
+    } finally {
+      setLoadingSettings(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+      setSavingSettings(true);
+      await businessUpdatesApi.updateShiftSettings(settings);
+      alert('Settings saved successfully!');
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+      alert('Failed to save settings.');
+    } finally {
+      setSavingSettings(false);
     }
   };
 
@@ -173,6 +214,19 @@ export function ShiftReporting() {
           >
             <FileText className="w-4 h-4" />
             EOD Reports
+          </button>
+          <button
+            onClick={() => setActiveSection('settings')}
+            className={`
+              flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm
+              ${activeSection === 'settings'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }
+            `}
+          >
+            <Settings className="w-4 h-4" />
+            Settings
           </button>
         </nav>
       </div>
@@ -594,6 +648,112 @@ export function ShiftReporting() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Settings */}
+      {activeSection === 'settings' && (
+        <div className="space-y-6">
+          {loadingSettings ? (
+            <div className="text-center py-12">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-6">Shift Reporting Configuration</h3>
+
+              <div className="space-y-6">
+                {/* SOS Deadline Buffer */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Start of Shift (SOS) Deadline Buffer
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="number"
+                      min="0"
+                      max="24"
+                      value={settings.shift_sos_deadline_buffer_hours}
+                      onChange={(e) => setSettings({
+                        ...settings,
+                        shift_sos_deadline_buffer_hours: parseInt(e.target.value) || 0
+                      })}
+                      className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <span className="text-sm text-gray-600">
+                      hours after shift start to allow SOS submissions
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Team leaders can submit SOS updates within this time window after their shift starts.
+                  </p>
+                </div>
+
+                {/* EOS Deadline Buffer */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    End of Shift (EOS) Deadline Buffer
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="number"
+                      min="0"
+                      max="24"
+                      value={settings.shift_eos_deadline_buffer_hours}
+                      onChange={(e) => setSettings({
+                        ...settings,
+                        shift_eos_deadline_buffer_hours: parseInt(e.target.value) || 0
+                      })}
+                      className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <span className="text-sm text-gray-600">
+                      hours after shift end to allow EOS submissions
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Team leaders can submit EOS updates within this time window after their shift ends.
+                  </p>
+                </div>
+
+                {/* Executive Email List */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Executive Email List (EOD Reports)
+                  </label>
+                  <textarea
+                    value={settings.exec_email_list}
+                    onChange={(e) => setSettings({
+                      ...settings,
+                      exec_email_list: e.target.value
+                    })}
+                    rows={3}
+                    placeholder="email1@example.com, email2@example.com"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Comma-separated email addresses. These recipients will receive automated EOD reports.
+                  </p>
+                </div>
+
+                {/* Save Button */}
+                <div className="pt-4 border-t border-gray-200">
+                  <button
+                    onClick={handleSaveSettings}
+                    disabled={savingSettings}
+                    className={`
+                      px-6 py-2 rounded-lg font-medium transition-colors
+                      ${savingSettings
+                        ? 'bg-gray-400 text-white cursor-not-allowed'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                      }
+                    `}
+                  >
+                    {savingSettings ? 'Saving...' : 'Save Settings'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

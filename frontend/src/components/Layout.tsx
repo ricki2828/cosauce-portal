@@ -1,5 +1,5 @@
 import { Link, useLocation, Outlet } from 'react-router-dom';
-import { FileText, Users, Megaphone, LayoutDashboard, Settings, Flag, UserCog } from 'lucide-react';
+import { FileText, Users, Megaphone, LayoutDashboard, Settings, Flag, UserCog, BarChart3 } from 'lucide-react';
 import UserMenu from './auth/UserMenu';
 
 const navigation = [
@@ -9,6 +9,7 @@ const navigation = [
   { name: 'Sales', href: '/sales', icon: Users },
   { name: 'Outreach', href: '/outreach', icon: Megaphone },
   { name: 'People', href: '/people', icon: UserCog },
+  { name: 'Business Updates', href: '/business-updates', icon: BarChart3 },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 

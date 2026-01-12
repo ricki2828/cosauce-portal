@@ -2,8 +2,11 @@
 Sales API - Company research, contact management, and signal tracking
 """
 from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List
+import json
+import asyncio
 
 from ..services.sales_service import get_sales_service, SalesService
 
@@ -46,6 +49,13 @@ class CompanyResponse(BaseModel):
     created_at: str
     updated_at: str
     tags: List[str]
+    # Extended fields
+    domain: Optional[str] = None
+    apollo_id: Optional[str] = None
+    employee_count: Optional[int] = None
+    employee_growth: Optional[float] = None
+    status: str = "new"
+    bpo_analysis: Optional[dict] = None  # AI-generated BPO fit analysis
 
 
 class ContactCreate(BaseModel):
@@ -110,6 +120,37 @@ class ResearchRequest(BaseModel):
     website: Optional[str] = None
 
 
+class RFPCreate(BaseModel):
+    title: str
+    issuer: str
+    description: Optional[str] = None
+    url: Optional[str] = None
+    deadline: Optional[str] = None
+    source: str = "manual"
+    region: Optional[str] = None
+    value_estimate: Optional[str] = None
+
+
+class RFPUpdate(BaseModel):
+    status: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class RFPResponse(BaseModel):
+    id: str
+    title: str
+    issuer: str
+    description: Optional[str]
+    url: Optional[str]
+    deadline: Optional[str]
+    discovered_at: str
+    source: str
+    status: str
+    region: Optional[str]
+    value_estimate: Optional[str]
+    notes: Optional[str]
+
+
 # ==================== DEPENDENCY ====================
 
 async def get_service() -> SalesService:
@@ -146,6 +187,12 @@ async def create_company(
         created_at=company.created_at,
         updated_at=company.updated_at,
         tags=company.tags,
+        domain=company.domain,
+        apollo_id=company.apollo_id,
+        employee_count=company.employee_count,
+        employee_growth=company.employee_growth,
+        status=company.status,
+        bpo_analysis=company.bpo_analysis,
     )
 
 
@@ -177,6 +224,12 @@ async def list_companies(
             created_at=c.created_at,
             updated_at=c.updated_at,
             tags=c.tags,
+            domain=c.domain,
+            apollo_id=c.apollo_id,
+            employee_count=c.employee_count,
+            employee_growth=c.employee_growth,
+            status=c.status,
+            bpo_analysis=c.bpo_analysis,
         )
         for c in companies
     ]
@@ -203,6 +256,12 @@ async def get_company(
         created_at=company.created_at,
         updated_at=company.updated_at,
         tags=company.tags,
+        domain=company.domain,
+        apollo_id=company.apollo_id,
+        employee_count=company.employee_count,
+        employee_growth=company.employee_growth,
+        status=company.status,
+        bpo_analysis=company.bpo_analysis,
     )
 
 
@@ -231,6 +290,12 @@ async def update_company(
         created_at=company.created_at,
         updated_at=company.updated_at,
         tags=company.tags,
+        domain=company.domain,
+        apollo_id=company.apollo_id,
+        employee_count=company.employee_count,
+        employee_growth=company.employee_growth,
+        status=company.status,
+        bpo_analysis=company.bpo_analysis,
     )
 
 
@@ -596,14 +661,178 @@ async def find_contacts_for_company(
     return result
 
 
-@router.post("/companies/{company_id}/recalculate-score")
-async def recalculate_company_score(
-    company_id: str,
+# ==================== BULK OPERATIONS ====================
+
+class BulkCompanyRequest(BaseModel):
+    company_ids: List[str]
+
+
+class BulkStatusRequest(BaseModel):
+    company_ids: List[str]
+    status: str  # new, target, contacted, meeting
+
+
+@router.post("/bulk/enrich")
+async def bulk_enrich_companies(
+    request: BulkCompanyRequest,
     service: SalesService = Depends(get_service)
 ):
-    """Recalculate a company's score based on all its signals."""
-    result = await service.recalculate_company_score(company_id)
+    """Enrich multiple companies with Apollo data."""
+    result = await service.bulk_enrich_companies(request.company_ids)
     return result
+
+
+@router.post("/bulk/find-contacts")
+async def bulk_find_contacts(
+    request: BulkCompanyRequest,
+    limit_per_company: int = Query(5, le=10),
+    service: SalesService = Depends(get_service)
+):
+    """Find contacts for multiple companies."""
+    result = await service.bulk_find_contacts(request.company_ids, limit_per_company)
+    return result
+
+
+@router.post("/bulk/analyze-bpo")
+async def bulk_analyze_bpo(
+    request: BulkCompanyRequest,
+    service: SalesService = Depends(get_service)
+):
+    """Analyze BPO fit for multiple companies using OpenAI."""
+    result = await service.bulk_analyze_bpo(request.company_ids)
+    return result
+
+
+@router.post("/bulk/analyze-bpo-stream")
+async def bulk_analyze_bpo_stream(
+    request: BulkCompanyRequest,
+    service: SalesService = Depends(get_service)
+):
+    """Stream BPO analysis progress in real-time using Server-Sent Events."""
+
+    async def event_generator():
+        """Generate SSE events for progress updates."""
+        company_ids = request.company_ids
+        total = len(company_ids)
+        success_count = 0
+        failed_count = 0
+
+        for idx, company_id in enumerate(company_ids, 1):
+            # Get company name for progress display
+            try:
+                company = await service.get_company(company_id)
+                company_name = company.name if company else f"Company {idx}"
+            except:
+                company_name = f"Company {idx}"
+
+            # Send progress update
+            progress_data = {
+                "processed": idx,
+                "total": total,
+                "current_company": company_name,
+                "success_count": success_count,
+                "failed_count": failed_count,
+                "percentage": int((idx / total) * 100)
+            }
+            yield f"data: {json.dumps(progress_data)}\n\n"
+
+            # Analyze company
+            try:
+                result = await service.analyze_bpo_fit(company_id)
+                if result.get("success"):
+                    success_count += 1
+                else:
+                    failed_count += 1
+            except Exception as e:
+                failed_count += 1
+
+            # Small delay to prevent overwhelming the client
+            await asyncio.sleep(0.1)
+
+        # Send final summary
+        final_data = {
+            "processed": total,
+            "total": total,
+            "current_company": "Complete",
+            "success_count": success_count,
+            "failed_count": failed_count,
+            "percentage": 100,
+            "done": True
+        }
+        yield f"data: {json.dumps(final_data)}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
+
+
+@router.post("/bulk/status")
+async def bulk_update_status(
+    request: BulkStatusRequest,
+    service: SalesService = Depends(get_service)
+):
+    """Update status for multiple companies."""
+    result = await service.bulk_update_status(request.company_ids, request.status)
+    return result
+
+
+@router.get("/export")
+async def export_companies(
+    company_ids: Optional[str] = Query(None, description="Comma-separated company IDs"),
+    format: str = Query("json", pattern="^(csv|json)$"),
+    service: SalesService = Depends(get_service)
+):
+    """Export companies with their contacts."""
+    ids = company_ids.split(",") if company_ids else None
+    data = await service.export_companies_with_contacts(ids)
+
+    if format == "csv":
+        import io
+        import csv
+        output = io.StringIO()
+        writer = csv.writer(output)
+        # Header row
+        writer.writerow(["company_name", "industry", "headquarters", "employee_count", "status", "linkedin_url", "contact_name", "contact_title", "contact_email", "contact_phone"])
+        # Data rows
+        for company in data:
+            if company.get("contacts"):
+                for contact in company["contacts"]:
+                    writer.writerow([
+                        company["name"],
+                        company.get("industry"),
+                        company.get("headquarters"),
+                        company.get("employee_count"),
+                        company.get("status"),
+                        company.get("linkedin_url"),
+                        contact.get("name"),
+                        contact.get("title"),
+                        contact.get("email"),
+                        contact.get("phone"),
+                    ])
+            else:
+                writer.writerow([
+                    company["name"],
+                    company.get("industry"),
+                    company.get("headquarters"),
+                    company.get("employee_count"),
+                    company.get("status"),
+                    company.get("linkedin_url"),
+                    "", "", "", ""
+                ])
+
+        from fastapi.responses import Response
+        return Response(
+            content=output.getvalue(),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=companies_export.csv"}
+        )
+
+    return {"count": len(data), "companies": data}
 
 
 # ==================== JOB SIGNAL ENDPOINTS ====================
@@ -717,3 +946,280 @@ async def list_projects(
         )
         for p in projects
     ]
+
+
+# ==================== RFP ENDPOINTS ====================
+
+@router.post("/rfps", response_model=RFPResponse)
+async def create_rfp(
+    request: RFPCreate,
+    service: SalesService = Depends(get_service)
+):
+    """Create a new RFP opportunity."""
+    rfp = await service.create_rfp(
+        title=request.title,
+        issuer=request.issuer,
+        description=request.description,
+        url=request.url,
+        deadline=request.deadline,
+        source=request.source,
+        region=request.region,
+        value_estimate=request.value_estimate,
+    )
+    return RFPResponse(
+        id=rfp.id,
+        title=rfp.title,
+        issuer=rfp.issuer,
+        description=rfp.description,
+        url=rfp.url,
+        deadline=rfp.deadline,
+        discovered_at=rfp.discovered_at,
+        source=rfp.source,
+        status=rfp.status,
+        region=rfp.region,
+        value_estimate=rfp.value_estimate,
+        notes=rfp.notes,
+    )
+
+
+@router.get("/rfps", response_model=List[RFPResponse])
+async def list_rfps(
+    status: Optional[str] = None,
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    service: SalesService = Depends(get_service)
+):
+    """List RFP opportunities."""
+    rfps = await service.get_rfps(status=status, limit=limit, offset=offset)
+    return [
+        RFPResponse(
+            id=r.id,
+            title=r.title,
+            issuer=r.issuer,
+            description=r.description,
+            url=r.url,
+            deadline=r.deadline,
+            discovered_at=r.discovered_at,
+            source=r.source,
+            status=r.status,
+            region=r.region,
+            value_estimate=r.value_estimate,
+            notes=r.notes,
+        )
+        for r in rfps
+    ]
+
+
+# ==================== RFP SEARCH (must come before {rfp_id} routes) ====================
+
+@router.get("/rfps/search")
+async def search_rfps(
+    query: str = Query("contact center outsourcing", description="Search query"),
+    region: str = Query("Canada", description="Region to search"),
+    service: SalesService = Depends(get_service)
+):
+    """Search for RFP opportunities from tender portals."""
+    return await service.search_for_rfps(query=query, region=region)
+
+
+# ==================== RFP ALERT ENDPOINTS (must come before {rfp_id} routes) ====================
+
+class RFPAlertCreate(BaseModel):
+    name: str
+    search_query: str
+    region: str = "Canada"
+
+
+class RFPAlertResponse(BaseModel):
+    id: str
+    name: str
+    search_query: str
+    region: str
+    is_active: bool
+    created_at: str
+    last_checked: Optional[str]
+    results_count: int
+
+
+@router.post("/rfps/alerts", response_model=RFPAlertResponse)
+async def create_rfp_alert(
+    request: RFPAlertCreate,
+    service: SalesService = Depends(get_service)
+):
+    """Create a new RFP alert for daily monitoring."""
+    alert = await service.create_rfp_alert(
+        name=request.name,
+        search_query=request.search_query,
+        region=request.region,
+    )
+    return RFPAlertResponse(
+        id=alert.id,
+        name=alert.name,
+        search_query=alert.search_query,
+        region=alert.region,
+        is_active=alert.is_active,
+        created_at=alert.created_at,
+        last_checked=alert.last_checked,
+        results_count=alert.results_count,
+    )
+
+
+@router.get("/rfps/alerts", response_model=List[RFPAlertResponse])
+async def list_rfp_alerts(
+    active_only: bool = Query(True),
+    service: SalesService = Depends(get_service)
+):
+    """List all RFP alerts."""
+    alerts = await service.get_rfp_alerts(active_only=active_only)
+    return [
+        RFPAlertResponse(
+            id=a.id,
+            name=a.name,
+            search_query=a.search_query,
+            region=a.region,
+            is_active=a.is_active,
+            created_at=a.created_at,
+            last_checked=a.last_checked,
+            results_count=a.results_count,
+        )
+        for a in alerts
+    ]
+
+
+@router.post("/rfps/alerts/run-all")
+async def run_all_rfp_alerts(
+    service: SalesService = Depends(get_service)
+):
+    """Run all active RFP alerts (used by daily cron job)."""
+    return await service.run_all_rfp_alerts()
+
+
+@router.post("/rfps/alerts/{alert_id}/run")
+async def run_rfp_alert(
+    alert_id: str,
+    service: SalesService = Depends(get_service)
+):
+    """Run a specific RFP alert and get results."""
+    result = await service.run_rfp_alert(alert_id)
+    if not result.get("success"):
+        raise HTTPException(status_code=404, detail=result.get("error", "Alert not found"))
+    return result
+
+
+@router.patch("/rfps/alerts/{alert_id}")
+async def update_rfp_alert(
+    alert_id: str,
+    is_active: Optional[bool] = None,
+    service: SalesService = Depends(get_service)
+):
+    """Update an RFP alert (e.g., enable/disable)."""
+    alert = await service.update_rfp_alert(alert_id=alert_id, is_active=is_active)
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return RFPAlertResponse(
+        id=alert.id,
+        name=alert.name,
+        search_query=alert.search_query,
+        region=alert.region,
+        is_active=alert.is_active,
+        created_at=alert.created_at,
+        last_checked=alert.last_checked,
+        results_count=alert.results_count,
+    )
+
+
+@router.delete("/rfps/alerts/{alert_id}")
+async def delete_rfp_alert(
+    alert_id: str,
+    service: SalesService = Depends(get_service)
+):
+    """Delete an RFP alert."""
+    deleted = await service.delete_rfp_alert(alert_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return {"success": True}
+
+
+# ==================== RFP {rfp_id} ROUTES (must come AFTER specific routes) ====================
+
+@router.patch("/rfps/{rfp_id}", response_model=RFPResponse)
+async def update_rfp(
+    rfp_id: str,
+    request: RFPUpdate,
+    service: SalesService = Depends(get_service)
+):
+    """Update an RFP's status or notes."""
+    rfp = await service.update_rfp(
+        rfp_id=rfp_id,
+        status=request.status,
+        notes=request.notes,
+    )
+    if not rfp:
+        raise HTTPException(status_code=404, detail="RFP not found")
+    return RFPResponse(
+        id=rfp.id,
+        title=rfp.title,
+        issuer=rfp.issuer,
+        description=rfp.description,
+        url=rfp.url,
+        deadline=rfp.deadline,
+        discovered_at=rfp.discovered_at,
+        source=rfp.source,
+        status=rfp.status,
+        region=rfp.region,
+        value_estimate=rfp.value_estimate,
+        notes=rfp.notes,
+    )
+
+
+@router.delete("/rfps/{rfp_id}")
+async def delete_rfp(
+    rfp_id: str,
+    service: SalesService = Depends(get_service)
+):
+    """Delete an RFP."""
+    deleted = await service.delete_rfp(rfp_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="RFP not found")
+    return {"success": True}
+
+
+# ==================== SETTINGS ENDPOINTS ====================
+
+class SettingUpdate(BaseModel):
+    value: str
+
+
+@router.get("/settings/{key}")
+async def get_setting(
+    key: str,
+    service: SalesService = Depends(get_service)
+):
+    """Get a setting value by key."""
+    value = await service.get_setting(key)
+    return {"key": key, "value": value}
+
+
+@router.put("/settings/{key}")
+async def set_setting(
+    key: str,
+    request: SettingUpdate,
+    service: SalesService = Depends(get_service)
+):
+    """Set a setting value."""
+    await service.set_setting(key, request.value)
+    return {"success": True, "key": key}
+
+
+# ==================== BPO ANALYSIS ENDPOINTS ====================
+
+@router.post("/companies/{company_id}/analyze-bpo")
+async def analyze_bpo_fit(
+    company_id: str,
+    service: SalesService = Depends(get_service)
+):
+    """Analyze a company's BPO/outsourcing potential using AI."""
+    result = await service.analyze_bpo_fit(company_id)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error", "Analysis failed"))
+    return result

@@ -22,6 +22,27 @@ AZURE_CLIENT_ID = os.getenv('AZURE_CLIENT_ID', '')
 # OpenAI API
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
 
+# Daily Business Update Azure API
+AZURE_DAILY_UPDATE_API_URL = os.getenv(
+    'AZURE_DAILY_UPDATE_API_URL',
+    'https://daily-update-api.azurewebsites.net'
+)
+
+# Authentication & JWT
+JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'your-secret-key-change-in-production')  # CHANGE IN PRODUCTION!
+JWT_ALGORITHM = 'HS256'
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 1 hour
+JWT_REFRESH_TOKEN_EXPIRE_DAYS = 7  # 7 days
+
+# File uploads
+UPLOADS_DIR = DATA_DIR / 'uploads'
+INVOICES_DIR = UPLOADS_DIR / 'invoices'
+MAX_UPLOAD_SIZE_MB = 10
+
+# Ensure upload directories exist
+UPLOADS_DIR.mkdir(exist_ok=True)
+INVOICES_DIR.mkdir(exist_ok=True)
+
 # External Sales APIs
 RAPIDAPI_KEY = os.getenv('RAPIDAPI_KEY', '')  # For JSearch job board API
 APOLLO_API_KEY = os.getenv('APOLLO_API_KEY', '')  # For contact enrichment
@@ -45,8 +66,11 @@ _extra_origins = os.getenv('CORS_ORIGINS', '').split(',')
 CORS_ORIGINS = [
     'http://localhost:3000',
     'http://localhost:3002',
-    'http://localhost:5173',  # Vite dev server
+    'http://localhost:5173',  # Vite dev server (local)
     'http://169.150.243.5:3002',
+    'http://169.150.243.5:5173',  # Vite dev server (remote access)
+    'https://cosauce-portal.vercel.app',
+    'https://frontend-three-virid-34.vercel.app',
     *[o.strip() for o in _extra_origins if o.strip()],
 ]
 

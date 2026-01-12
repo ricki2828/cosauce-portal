@@ -13,6 +13,8 @@ from ..middleware.auth import get_current_user, get_current_director
 from ..models.people import (
     # Requisitions
     RequisitionCreate, RequisitionUpdate, Requisition, RequisitionStats,
+    RequisitionWithRoles, RequisitionRoleCreate, RequisitionRoleUpdate,
+    RequisitionRoleResponse,
     # Templates
     OnboardingTemplateCreate, OnboardingTemplateUpdate, OnboardingTemplate,
     OnboardingTemplateWithTasks, TemplateTaskCreate, TemplateTaskUpdate, TemplateTask,
@@ -27,12 +29,12 @@ router = APIRouter()
 # Requisitions Endpoints
 # ============================================
 
-@router.get("/requisitions", response_model=List[Requisition])
+@router.get("/requisitions", response_model=List[RequisitionWithRoles])
 async def list_requisitions(
     status: Optional[str] = None,
     current_user = Depends(get_current_user)
 ):
-    """List all requisitions with optional status filter"""
+    """List all requisitions with roles"""
     async with aiosqlite.connect(DATA_DIR / "portal.db") as db:
         db.row_factory = aiosqlite.Row
 
@@ -47,7 +49,27 @@ async def list_requisitions(
 
         async with db.execute(query, params) as cursor:
             rows = await cursor.fetchall()
-            return [dict(row) for row in rows]
+            requisitions = [dict(row) for row in rows]
+
+        # Fetch roles for each requisition
+        for req in requisitions:
+            async with db.execute("""
+                SELECT id, requisition_id, role_type, requested_count, filled_count,
+                       created_at, updated_at
+                FROM requisition_roles
+                WHERE requisition_id = ?
+                ORDER BY created_at
+            """, (req['id'],)) as cursor:
+                roles = await cursor.fetchall()
+                req['roles'] = [
+                    {
+                        **dict(role),
+                        'remaining_count': max(0, role['requested_count'] - role['filled_count'])
+                    }
+                    for role in roles
+                ]
+
+        return requisitions
 
 @router.get("/requisitions/stats", response_model=RequisitionStats)
 async def get_requisition_stats(
@@ -70,12 +92,12 @@ async def get_requisition_stats(
             row = await cursor.fetchone()
             return dict(row)
 
-@router.get("/requisitions/{id}", response_model=Requisition)
+@router.get("/requisitions/{id}", response_model=RequisitionWithRoles)
 async def get_requisition(
     id: str,
     current_user = Depends(get_current_user)
 ):
-    """Get single requisition by ID"""
+    """Get single requisition by ID with roles"""
     async with aiosqlite.connect(DATA_DIR / "portal.db") as db:
         db.row_factory = aiosqlite.Row
 
@@ -83,41 +105,91 @@ async def get_requisition(
             row = await cursor.fetchone()
             if not row:
                 raise HTTPException(status_code=404, detail="Requisition not found")
-            return dict(row)
+            req = dict(row)
 
-@router.post("/requisitions", response_model=Requisition)
+        # Fetch roles
+        async with db.execute("""
+            SELECT id, requisition_id, role_type, requested_count, filled_count,
+                   created_at, updated_at
+            FROM requisition_roles
+            WHERE requisition_id = ?
+            ORDER BY created_at
+        """, (id,)) as cursor:
+            roles = await cursor.fetchall()
+            req['roles'] = [
+                {
+                    **dict(role),
+                    'remaining_count': max(0, role['requested_count'] - role['filled_count'])
+                }
+                for role in roles
+            ]
+
+        return req
+
+@router.post("/requisitions", response_model=RequisitionWithRoles)
 async def create_requisition(
     data: RequisitionCreate,
     current_user = Depends(get_current_director)  # Directors/admins only
 ):
-    """Create new requisition"""
+    """Create new requisition with role lines"""
     requisition_id = str(uuid.uuid4())
     now = datetime.utcnow().isoformat()
+
+    # Calculate total headcount from roles
+    total_headcount = sum(role.requested_count for role in data.roles) if data.roles else 0
 
     async with aiosqlite.connect(DATA_DIR / "portal.db") as db:
         await db.execute("""
             INSERT INTO requisitions (
                 id, title, department, location, employment_type, status,
                 headcount, priority, description, requirements,
-                posted_date, target_start_date, created_by, created_at, updated_at
+                target_start_date, comments, created_by, created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             requisition_id, data.title, data.department, data.location,
-            data.employment_type, data.headcount, data.priority,
+            data.employment_type, total_headcount, data.priority,
             data.description, data.requirements,
-            data.posted_date.isoformat() if data.posted_date else None,
             data.target_start_date.isoformat() if data.target_start_date else None,
+            data.comments,
             current_user["id"], now, now
         ))
+
+        # Create role lines
+        for role in data.roles:
+            role_id = str(uuid.uuid4())
+            await db.execute("""
+                INSERT INTO requisition_roles (
+                    id, requisition_id, role_type, requested_count, filled_count,
+                    created_at, updated_at
+                ) VALUES (?, ?, ?, ?, 0, ?, ?)
+            """, (role_id, requisition_id, role.role_type, role.requested_count, now, now))
+
         await db.commit()
 
-        # Return created requisition
+        # Return created requisition with roles
         db.row_factory = aiosqlite.Row
         async with db.execute("SELECT * FROM requisitions WHERE id = ?", (requisition_id,)) as cursor:
             row = await cursor.fetchone()
-            return dict(row)
+            req = dict(row)
 
-@router.put("/requisitions/{id}", response_model=Requisition)
+        async with db.execute("""
+            SELECT id, requisition_id, role_type, requested_count, filled_count,
+                   created_at, updated_at
+            FROM requisition_roles
+            WHERE requisition_id = ?
+        """, (requisition_id,)) as cursor:
+            roles = await cursor.fetchall()
+            req['roles'] = [
+                {
+                    **dict(role),
+                    'remaining_count': max(0, role['requested_count'] - role['filled_count'])
+                }
+                for role in roles
+            ]
+
+        return req
+
+@router.put("/requisitions/{id}", response_model=RequisitionWithRoles)
 async def update_requisition(
     id: str,
     data: RequisitionUpdate,
@@ -130,7 +202,7 @@ async def update_requisition(
 
     for field, value in data.model_dump(exclude_unset=True).items():
         if field in ['title', 'department', 'location', 'employment_type', 'status',
-                     'headcount', 'priority', 'description', 'requirements', 'target_start_date']:
+                     'priority', 'description', 'requirements', 'target_start_date', 'comments']:
             updates.append(f"{field} = ?")
             params.append(value.isoformat() if hasattr(value, 'isoformat') else value)
 
@@ -148,13 +220,30 @@ async def update_requisition(
         )
         await db.commit()
 
-        # Return updated requisition
+        # Return updated requisition with roles
         db.row_factory = aiosqlite.Row
         async with db.execute("SELECT * FROM requisitions WHERE id = ?", (id,)) as cursor:
             row = await cursor.fetchone()
             if not row:
                 raise HTTPException(status_code=404, detail="Requisition not found")
-            return dict(row)
+            req = dict(row)
+
+        async with db.execute("""
+            SELECT id, requisition_id, role_type, requested_count, filled_count,
+                   created_at, updated_at
+            FROM requisition_roles
+            WHERE requisition_id = ?
+        """, (id,)) as cursor:
+            roles = await cursor.fetchall()
+            req['roles'] = [
+                {
+                    **dict(role),
+                    'remaining_count': max(0, role['requested_count'] - role['filled_count'])
+                }
+                for role in roles
+            ]
+
+        return req
 
 @router.post("/requisitions/{id}/fill")
 async def fill_requisition(
@@ -177,11 +266,168 @@ async def delete_requisition(
     id: str,
     current_user = Depends(get_current_director)
 ):
-    """Delete requisition"""
+    """Delete requisition and its roles"""
     async with aiosqlite.connect(DATA_DIR / "portal.db") as db:
+        # Roles are deleted via CASCADE, but explicit for clarity
+        await db.execute("DELETE FROM requisition_roles WHERE requisition_id = ?", (id,))
         await db.execute("DELETE FROM requisitions WHERE id = ?", (id,))
         await db.commit()
         return {"status": "success", "message": "Requisition deleted"}
+
+# ============================================
+# Requisition Roles Endpoints
+# ============================================
+
+@router.post("/requisitions/{req_id}/roles", response_model=RequisitionRoleResponse)
+async def add_requisition_role(
+    req_id: str,
+    data: RequisitionRoleCreate,
+    current_user = Depends(get_current_director)
+):
+    """Add a role line to an existing requisition"""
+    role_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat()
+
+    async with aiosqlite.connect(DATA_DIR / "portal.db") as db:
+        # Verify requisition exists
+        async with db.execute("SELECT id FROM requisitions WHERE id = ?", (req_id,)) as cursor:
+            if not await cursor.fetchone():
+                raise HTTPException(status_code=404, detail="Requisition not found")
+
+        # Add role
+        await db.execute("""
+            INSERT INTO requisition_roles (
+                id, requisition_id, role_type, requested_count, filled_count,
+                created_at, updated_at
+            ) VALUES (?, ?, ?, ?, 0, ?, ?)
+        """, (role_id, req_id, data.role_type, data.requested_count, now, now))
+
+        # Update requisition headcount
+        await db.execute("""
+            UPDATE requisitions SET headcount = (
+                SELECT SUM(requested_count) FROM requisition_roles WHERE requisition_id = ?
+            ), updated_at = ? WHERE id = ?
+        """, (req_id, now, req_id))
+
+        await db.commit()
+
+        return {
+            "id": role_id,
+            "requisition_id": req_id,
+            "role_type": data.role_type,
+            "requested_count": data.requested_count,
+            "filled_count": 0,
+            "remaining_count": data.requested_count
+        }
+
+@router.put("/requisitions/{req_id}/roles/{role_id}", response_model=RequisitionRoleResponse)
+async def update_requisition_role(
+    req_id: str,
+    role_id: str,
+    data: RequisitionRoleUpdate,
+    current_user = Depends(get_current_director)
+):
+    """Update a role line (change counts, mark filled)"""
+    updates = []
+    params = []
+    now = datetime.utcnow().isoformat()
+
+    for field, value in data.model_dump(exclude_unset=True).items():
+        if field in ['role_type', 'requested_count', 'filled_count']:
+            updates.append(f"{field} = ?")
+            params.append(value)
+
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    updates.append("updated_at = ?")
+    params.append(now)
+    params.append(role_id)
+
+    async with aiosqlite.connect(DATA_DIR / "portal.db") as db:
+        await db.execute(
+            f"UPDATE requisition_roles SET {', '.join(updates)} WHERE id = ?",
+            params
+        )
+
+        # Update requisition headcount
+        await db.execute("""
+            UPDATE requisitions SET headcount = (
+                SELECT SUM(requested_count) FROM requisition_roles WHERE requisition_id = ?
+            ), updated_at = ? WHERE id = ?
+        """, (req_id, now, req_id))
+
+        await db.commit()
+
+        db.row_factory = aiosqlite.Row
+        async with db.execute("""
+            SELECT id, requisition_id, role_type, requested_count, filled_count
+            FROM requisition_roles WHERE id = ?
+        """, (role_id,)) as cursor:
+            row = await cursor.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Role not found")
+            role = dict(row)
+            role['remaining_count'] = max(0, role['requested_count'] - role['filled_count'])
+            return role
+
+@router.delete("/requisitions/{req_id}/roles/{role_id}")
+async def delete_requisition_role(
+    req_id: str,
+    role_id: str,
+    current_user = Depends(get_current_director)
+):
+    """Delete a role line from requisition"""
+    now = datetime.utcnow().isoformat()
+
+    async with aiosqlite.connect(DATA_DIR / "portal.db") as db:
+        await db.execute("DELETE FROM requisition_roles WHERE id = ?", (role_id,))
+
+        # Update requisition headcount
+        await db.execute("""
+            UPDATE requisitions SET headcount = COALESCE((
+                SELECT SUM(requested_count) FROM requisition_roles WHERE requisition_id = ?
+            ), 0), updated_at = ? WHERE id = ?
+        """, (req_id, now, req_id))
+
+        await db.commit()
+        return {"status": "success", "message": "Role deleted"}
+
+@router.post("/requisitions/{req_id}/roles/{role_id}/fill")
+async def increment_role_filled(
+    req_id: str,
+    role_id: str,
+    count: int = 1,
+    current_user = Depends(get_current_director)
+):
+    """Increment filled count for a role (when someone is hired)"""
+    now = datetime.utcnow().isoformat()
+
+    async with aiosqlite.connect(DATA_DIR / "portal.db") as db:
+        await db.execute("""
+            UPDATE requisition_roles
+            SET filled_count = filled_count + ?, updated_at = ?
+            WHERE id = ?
+        """, (count, now, role_id))
+
+        # Update requisition timestamp
+        await db.execute("""
+            UPDATE requisitions SET updated_at = ? WHERE id = ?
+        """, (now, req_id))
+
+        await db.commit()
+
+        db.row_factory = aiosqlite.Row
+        async with db.execute("""
+            SELECT id, requisition_id, role_type, requested_count, filled_count
+            FROM requisition_roles WHERE id = ?
+        """, (role_id,)) as cursor:
+            row = await cursor.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Role not found")
+            role = dict(row)
+            role['remaining_count'] = max(0, role['requested_count'] - role['filled_count'])
+            return role
 
 # ============================================
 # Onboarding Templates Endpoints

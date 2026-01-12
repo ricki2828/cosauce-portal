@@ -1,0 +1,37 @@
+#!/bin/bash
+#
+# Git Pre-Commit Hook - Automatic Frontend Validation
+#
+# To install this hook:
+#   cp pre-commit-hook-example ../.git/hooks/pre-commit
+#   chmod +x ../.git/hooks/pre-commit
+#
+# To uninstall:
+#   rm ../.git/hooks/pre-commit
+#
+# To bypass when needed:
+#   git commit --no-verify
+#
+
+echo "Running frontend validation..."
+echo ""
+
+cd "$(git rev-parse --show-toplevel)/frontend"
+
+# Run validation script
+./validate-browser.sh http://169.150.243.5:5173
+
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "❌ Validation failed - commit blocked"
+    echo ""
+    echo "Fix the errors above, then try again."
+    echo "Or bypass with: git commit --no-verify (not recommended)"
+    exit 1
+fi
+
+echo ""
+echo "✅ Validation passed - proceeding with commit"
+echo ""
+
+exit 0

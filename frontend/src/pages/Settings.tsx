@@ -1,6 +1,74 @@
-import { User, Bell, Shield } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { User, Bell, Shield, Brain, Save, RefreshCw } from 'lucide-react';
+import { salesApi } from '../lib/api';
+
+const DEFAULT_BPO_PROMPT = `Analyze this company for BPO/outsourcing fit using all available information. Consider:
+
+Company Profile & Growth:
+- Industry fit (tech, finance, retail, telecom, healthcare, e-commerce)
+- Company size and recent employee growth trends
+- Headquarters location and global presence indicators
+
+Operational Signals:
+- Job postings indicating CX/sales team scaling
+- Multilingual support needs
+- 24/7 coverage requirements
+- Remote/offshore team mentions
+- Multiple similar role postings (growth pains)
+
+Business Context:
+- Company description and business model
+- Website and online presence
+- Customer-facing operations scale
+- Technology stack and digital maturity
+
+Rate their likelihood to outsource as HIGH, MEDIUM, or LOW.
+List the key signals you detected.
+Provide brief reasoning explaining your assessment.`;
 
 export function Settings() {
+  const [bpoPrompt, setBpoPrompt] = useState('');
+  const [bpoLoading, setBpoLoading] = useState(false);
+  const [bpoSaving, setBpoSaving] = useState(false);
+  const [bpoSaved, setBpoSaved] = useState(false);
+
+  // Load BPO prompt on mount
+  useEffect(() => {
+    const loadBpoPrompt = async () => {
+      setBpoLoading(true);
+      try {
+        const response = await salesApi.getSetting('bpo_analysis_prompt');
+        setBpoPrompt(response.data.value || DEFAULT_BPO_PROMPT);
+      } catch {
+        setBpoPrompt(DEFAULT_BPO_PROMPT);
+      } finally {
+        setBpoLoading(false);
+      }
+    };
+    loadBpoPrompt();
+  }, []);
+
+  const handleSaveBpoPrompt = async () => {
+    setBpoSaving(true);
+    setBpoSaved(false);
+    try {
+      await salesApi.setSetting('bpo_analysis_prompt', bpoPrompt);
+      setBpoSaved(true);
+      setTimeout(() => setBpoSaved(false), 3000);
+    } catch (error) {
+      console.error('Failed to save BPO prompt:', error);
+      alert('Failed to save prompt. Please try again.');
+    } finally {
+      setBpoSaving(false);
+    }
+  };
+
+  const handleResetBpoPrompt = () => {
+    if (confirm('Reset to default prompt? Your custom prompt will be lost.')) {
+      setBpoPrompt(DEFAULT_BPO_PROMPT);
+    }
+  };
+
   return (
     <div>
       <div className="mb-8">
@@ -9,6 +77,54 @@ export function Settings() {
       </div>
 
       <div className="max-w-2xl space-y-6">
+        {/* BPO Analysis Prompt */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="flex items-center mb-4">
+            <Brain className="w-5 h-5 text-purple-600 mr-2" />
+            <h2 className="text-lg font-medium text-gray-900">BPO Analysis Prompt</h2>
+          </div>
+          <p className="text-gray-600 text-sm mb-4">
+            Customize how AI analyzes companies for outsourcing fit. Describe what signals matter to your business
+            when determining if a company is likely to outsource their customer service or sales operations.
+          </p>
+          {bpoLoading ? (
+            <div className="flex items-center justify-center py-8 text-gray-500">
+              <RefreshCw className="w-5 h-5 animate-spin mr-2" />
+              Loading...
+            </div>
+          ) : (
+            <>
+              <textarea
+                value={bpoPrompt}
+                onChange={(e) => setBpoPrompt(e.target.value)}
+                rows={12}
+                className="w-full border border-gray-300 rounded-lg p-3 font-mono text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                placeholder="Enter your custom analysis prompt..."
+              />
+              <div className="mt-4 flex items-center justify-between">
+                <button
+                  onClick={handleResetBpoPrompt}
+                  className="text-sm text-gray-500 hover:text-gray-700"
+                >
+                  Reset to Default
+                </button>
+                <button
+                  onClick={handleSaveBpoPrompt}
+                  disabled={bpoSaving}
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {bpoSaving ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  {bpoSaved ? 'Saved!' : 'Save Prompt'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
         {/* Profile */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center mb-4">
