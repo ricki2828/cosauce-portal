@@ -4,3 +4,4 @@ export { PerformanceCard } from './PerformanceCard';
 export { RequisitionMiniCard } from './RequisitionMiniCard';
 export { NewHireMiniCard } from './NewHireMiniCard';
 export { SalesPipelineCard } from './SalesPipelineCard';
+export { SalesPipelineKanban } from './SalesPipelineKanban';

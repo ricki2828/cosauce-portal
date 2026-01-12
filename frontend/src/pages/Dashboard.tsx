@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Flag, BarChart3, Users, TrendingUp, Star, Target, Mail, Calendar } from 'lucide-react';
+import { Flag, BarChart3, Users, TrendingUp } from 'lucide-react';
 import { prioritiesApi, businessUpdatesApi, peopleApi, salesApi } from '../lib/api';
 import type { Requisition, NewHire, Company, JobSignal } from '../lib/api';
 import type { Priority } from '../lib/priorities-types';
@@ -10,7 +10,7 @@ import {
   PerformanceCard,
   RequisitionMiniCard,
   NewHireMiniCard,
-  SalesPipelineCard
+  SalesPipelineKanban
 } from '../components/dashboard';
 
 export function Dashboard() {
@@ -151,29 +151,6 @@ export function Dashboard() {
     loadRecentCommentary();
   }, []);
 
-  // Compute pipeline stages from sales companies
-  const getPipelineStages = () => {
-    const statusCounts: Record<string, number> = {
-      new: 0,
-      target: 0,
-      contacted: 0,
-      meeting: 0,
-    };
-
-    salesCompanies.forEach((company) => {
-      if (statusCounts[company.status] !== undefined) {
-        statusCounts[company.status]++;
-      }
-    });
-
-    return [
-      { status: 'new', label: 'New Leads', count: statusCounts.new, color: 'text-blue-600', icon: Star },
-      { status: 'target', label: 'Qualified', count: statusCounts.target, color: 'text-purple-600', icon: Target },
-      { status: 'contacted', label: 'Contacted', count: statusCounts.contacted, color: 'text-amber-600', icon: Mail },
-      { status: 'meeting', label: 'Meeting', count: statusCounts.meeting, color: 'text-green-600', icon: Calendar },
-    ];
-  };
-
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -264,13 +241,7 @@ export function Dashboard() {
         isEmpty={salesCompanies.length === 0}
         emptyMessage="No sales pipeline data available."
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          <SalesPipelineCard
-            stages={getPipelineStages()}
-            totalCompanies={salesCompanies.length}
-            totalSignals={salesSignals.length}
-          />
-        </div>
+        <SalesPipelineKanban companies={salesCompanies} />
       </DashboardSection>
     </div>
   );
