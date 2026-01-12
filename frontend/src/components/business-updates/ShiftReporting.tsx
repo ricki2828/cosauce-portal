@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, FileText, Download } from 'lucide-react';
+import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, FileText } from 'lucide-react';
 import { businessUpdatesApi } from '../../lib/api';
 import type { ShiftUpdate, ComplianceStats, EodReport } from '../../lib/business-updates-types';
 
@@ -23,7 +23,6 @@ export function ShiftReporting() {
   const [dateTo, setDateTo] = useState('');
   const [reportType, setReportType] = useState<string>('');
   const [loadingReports, setLoadingReports] = useState(false);
-  const [selectedReport, setSelectedReport] = useState<EodReport | null>(null);
 
   // Load compliance stats
   useEffect(() => {
@@ -522,8 +521,7 @@ export function ShiftReporting() {
                 {eodReports.map((report) => (
                   <div
                     key={report.id}
-                    className="p-6 hover:bg-gray-50 cursor-pointer"
-                    onClick={() => setSelectedReport(report)}
+                    className="p-6 hover:bg-gray-50"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
