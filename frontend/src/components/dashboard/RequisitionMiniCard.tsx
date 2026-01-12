@@ -15,9 +15,10 @@ export function RequisitionMiniCard({ requisition }: RequisitionMiniCardProps) {
     cancelled: 'bg-red-100 text-red-800',
   };
 
-  const totalRemaining = requisition.roles.reduce((sum, role) => sum + role.remaining_count, 0);
-  const totalRequested = requisition.roles.reduce((sum, role) => sum + role.requested_count, 0);
-  const totalFilled = requisition.roles.reduce((sum, role) => sum + role.filled_count, 0);
+  const roles = requisition.roles || [];
+  const totalRemaining = roles.reduce((sum, role) => sum + role.remaining_count, 0);
+  const totalRequested = roles.reduce((sum, role) => sum + role.requested_count, 0);
+  const totalFilled = roles.reduce((sum, role) => sum + role.filled_count, 0);
 
   return (
     <Link
@@ -48,9 +49,9 @@ export function RequisitionMiniCard({ requisition }: RequisitionMiniCardProps) {
       {/* Role Summary */}
       <div className="mb-2">
         <p className="text-xs text-gray-500 mb-1.5">Roles</p>
-        {requisition.roles.length > 0 ? (
+        {roles.length > 0 ? (
           <div className="space-y-1">
-            {requisition.roles.slice(0, 2).map((role, idx) => (
+            {roles.slice(0, 2).map((role, idx) => (
               <div key={idx} className="flex items-center justify-between text-xs">
                 <span className="text-gray-700">{role.role_type}</span>
                 <span className="text-gray-500">
@@ -61,8 +62,8 @@ export function RequisitionMiniCard({ requisition }: RequisitionMiniCardProps) {
                 </span>
               </div>
             ))}
-            {requisition.roles.length > 2 && (
-              <p className="text-xs text-gray-400">+{requisition.roles.length - 2} more</p>
+            {roles.length > 2 && (
+              <p className="text-xs text-gray-400">+{roles.length - 2} more</p>
             )}
           </div>
         ) : (
