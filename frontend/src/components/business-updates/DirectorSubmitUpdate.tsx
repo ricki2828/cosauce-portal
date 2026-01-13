@@ -64,20 +64,38 @@ export function DirectorSubmitUpdate() {
 
   const loadAccountsForTeamLeader = async (teamLeader: TeamLeader) => {
     try {
+      // Check if team leader has any account_ids
+      if (!teamLeader.account_ids || teamLeader.account_ids.length === 0) {
+        setError(`${teamLeader.name} has no accounts assigned. Please assign accounts to this team leader first.`);
+        setAccounts([]);
+        return;
+      }
+
       // Fetch full account details for each account_id
       const accountPromises = teamLeader.account_ids.map(id =>
-        businessUpdatesApi.getAccount(id).catch(() => null)
+        businessUpdatesApi.getAccount(id).catch((err) => {
+          console.error(`Failed to load account ${id}:`, err);
+          return null;
+        })
       );
       const accountResults = await Promise.all(accountPromises);
       const validAccounts = accountResults
         .filter(result => result !== null)
         .map(result => result!.data);
+
+      if (validAccounts.length === 0) {
+        setError(`Failed to load accounts for ${teamLeader.name}. The assigned accounts may not exist.`);
+      } else {
+        setError(null);  // Clear any previous errors
+      }
+
       setAccounts(validAccounts);
 
       if (validAccounts.length === 1) {
         setSelectedAccount(validAccounts[0].id);
       }
     } catch (err) {
+      console.error('Error loading accounts:', err);
       setError('Failed to load accounts for this team leader.');
       setAccounts([]);
     }
