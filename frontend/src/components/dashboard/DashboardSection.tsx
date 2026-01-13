@@ -11,6 +11,7 @@ interface DashboardSectionProps {
   onRetry?: () => void;
   emptyMessage?: string;
   isEmpty?: boolean;
+  action?: ReactNode;
 }
 
 export function DashboardSection({
@@ -22,13 +23,17 @@ export function DashboardSection({
   onRetry,
   emptyMessage = 'No data available',
   isEmpty = false,
+  action,
 }: DashboardSectionProps) {
   return (
     <div className="mb-8">
       {/* Header */}
-      <div className="flex items-center gap-2 mb-4">
-        <Icon className="w-5 h-5 text-gray-700" />
-        <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Icon className="w-5 h-5 text-gray-700" />
+          <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+        </div>
+        {action && <div>{action}</div>}
       </div>
 
       {/* Error State */}

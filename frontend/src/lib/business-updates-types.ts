@@ -243,6 +243,30 @@ export interface TrendData {
 }
 
 // ============================================
+// Team Leader Submission
+// ============================================
+
+export interface TeamLeaderProfile {
+  id: string;
+  name: string;
+  email: string;
+  account_ids: string[];
+}
+
+export interface MetricValueCreate {
+  metric_definition_id: string;
+  value: string | number;
+}
+
+export interface DirectSubmitRequest {
+  team_leader_id: string;
+  account_id: string;
+  date: string; // YYYY-MM-DD format
+  metrics: MetricValueCreate[];
+  notes?: string;
+}
+
+// ============================================
 // Bot Controls
 // ============================================
 

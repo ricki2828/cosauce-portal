@@ -5,10 +5,11 @@ interface User {
   id: string;
   email: string;
   name: string;
-  role: string;
+  role: 'admin' | 'director' | 'viewer' | 'team_leader';
   is_active: number;
   created_at: string;
   last_login: string | null;
+  azure_team_leader_id?: string;
 }
 
 interface AuthContextType {

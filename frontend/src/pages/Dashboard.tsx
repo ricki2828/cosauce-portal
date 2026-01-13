@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Flag, BarChart3, Users, TrendingUp } from 'lucide-react';
-import { prioritiesApi, businessUpdatesApi, peopleApi, salesApi } from '../lib/api';
-import type { Requisition, NewHire, Company } from '../lib/api';
+import { Flag, BarChart3, Users, TrendingUp, Plus } from 'lucide-react';
+import { prioritiesApi, businessUpdatesApi, peopleApi, pipelineApi } from '../lib/api';
+import type { Requisition, NewHire, PipelineOpportunity, PipelineOpportunityCreate, PipelineOpportunityUpdate } from '../lib/api';
 import type { Priority } from '../lib/priorities-types';
 import type { DashboardData, ShiftUpdate } from '../lib/business-updates-types';
 import {
@@ -12,6 +12,7 @@ import {
   NewHireMiniCard,
   SalesPipelineKanban
 } from '../components/dashboard';
+import { OpportunityModal } from '../components/dashboard/OpportunityModal';
 
 export function Dashboard() {
   // Priorities state
@@ -33,10 +34,14 @@ export function Dashboard() {
   const [newHiresLoading, setNewHiresLoading] = useState(true);
   const [newHiresError, setNewHiresError] = useState<string | null>(null);
 
-  // Sales state
-  const [salesCompanies, setSalesCompanies] = useState<Company[]>([]);
-  const [salesLoading, setSalesLoading] = useState(true);
-  const [salesError, setSalesError] = useState<string | null>(null);
+  // Pipeline opportunities state
+  const [opportunities, setOpportunities] = useState<PipelineOpportunity[]>([]);
+  const [opportunitiesLoading, setOpportunitiesLoading] = useState(true);
+  const [opportunitiesError, setOpportunitiesError] = useState<string | null>(null);
+
+  // Opportunity modal state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedOpportunity, setSelectedOpportunity] = useState<PipelineOpportunity | undefined>(undefined);
 
   // Shift update state (for recent commentary)
   const [recentCommentary, setRecentCommentary] = useState<ShiftUpdate | null>(null);
@@ -105,18 +110,47 @@ export function Dashboard() {
     }
   };
 
-  // Load sales data
-  const loadSales = async () => {
+  // Load pipeline opportunities
+  const loadOpportunities = async () => {
     try {
-      setSalesLoading(true);
-      setSalesError(null);
-      const companiesRes = await salesApi.getCompanies({ limit: 100 });
-      setSalesCompanies(companiesRes.data);
+      setOpportunitiesLoading(true);
+      setOpportunitiesError(null);
+      const response = await pipelineApi.getOpportunities();
+      setOpportunities(response.data);
     } catch (err: any) {
-      console.error('Failed to load sales data:', err);
-      setSalesError(err.response?.data?.detail || 'Failed to load sales data');
+      console.error('Failed to load opportunities:', err);
+      setOpportunitiesError(err.response?.data?.detail || 'Failed to load opportunities');
     } finally {
-      setSalesLoading(false);
+      setOpportunitiesLoading(false);
+    }
+  };
+
+  // Handle opening modal for add
+  const handleAddOpportunity = () => {
+    setSelectedOpportunity(undefined);
+    setIsModalOpen(true);
+  };
+
+  // Handle opening modal for edit
+  const handleEditOpportunity = (opportunity: PipelineOpportunity) => {
+    setSelectedOpportunity(opportunity);
+    setIsModalOpen(true);
+  };
+
+  // Handle saving opportunity (create or update)
+  const handleSaveOpportunity = async (data: PipelineOpportunityCreate | PipelineOpportunityUpdate) => {
+    try {
+      if (selectedOpportunity) {
+        // Update existing
+        await pipelineApi.updateOpportunity(selectedOpportunity.id, data as PipelineOpportunityUpdate);
+      } else {
+        // Create new
+        await pipelineApi.createOpportunity(data as PipelineOpportunityCreate);
+      }
+      await loadOpportunities();
+    } catch (err: any) {
+      console.error('Failed to save opportunity:', err);
+      throw err; // Let modal handle the error
     }
   };
 
@@ -142,7 +176,7 @@ export function Dashboard() {
     loadPerformance();
     loadRequisitions();
     loadNewHires();
-    loadSales();
+    loadOpportunities();
     loadRecentCommentary();
   }, []);
 
@@ -230,14 +264,31 @@ export function Dashboard() {
       <DashboardSection
         title="Sales Pipeline"
         icon={TrendingUp}
-        loading={salesLoading}
-        error={salesError}
-        onRetry={loadSales}
-        isEmpty={salesCompanies.length === 0}
-        emptyMessage="No sales pipeline data available."
+        loading={opportunitiesLoading}
+        error={opportunitiesError}
+        onRetry={loadOpportunities}
+        isEmpty={opportunities.length === 0}
+        emptyMessage="No pipeline opportunities. Click 'Add Opportunity' to get started."
+        action={
+          <button
+            onClick={handleAddOpportunity}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add Opportunity
+          </button>
+        }
       >
-        <SalesPipelineKanban companies={salesCompanies} />
+        <SalesPipelineKanban opportunities={opportunities} onEditOpportunity={handleEditOpportunity} />
       </DashboardSection>
+
+      {/* Opportunity Modal */}
+      <OpportunityModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSaveOpportunity}
+        opportunity={selectedOpportunity}
+      />
     </div>
   );
 }

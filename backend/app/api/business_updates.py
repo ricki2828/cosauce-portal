@@ -10,7 +10,7 @@ import json
 import math
 
 from ..config import AZURE_DAILY_UPDATE_API_URL
-from ..middleware.auth import get_current_user, get_current_director, get_current_admin
+from ..middleware.auth import get_current_user, get_current_director, get_current_admin, get_current_team_leader
 
 router = APIRouter()
 
@@ -690,4 +690,37 @@ async def get_bot_health(
     return await proxy_request(
         method="GET",
         path="/api/bot/health"
+    )
+
+
+# ============================================
+# Team Leader Direct Submission Endpoints
+# ============================================
+
+@router.get("/me/team-leader-profile")
+async def get_my_team_leader_profile(
+    current_user = Depends(get_current_team_leader)
+):
+    """Get current user's linked team leader profile from Azure."""
+    user_email = current_user.get("email")
+
+    # Fetch from Azure API
+    return await proxy_request(
+        method="GET",
+        path=f"/api/team-leaders/by-email/{user_email}"
+    )
+
+
+@router.post("/submit-update")
+async def submit_update_direct(
+    request: Request,
+    current_user = Depends(get_current_team_leader)
+):
+    """Submit metrics directly (proxies to Azure)."""
+    body = await request.json()
+
+    return await proxy_request(
+        method="POST",
+        path="/api/updates/submit-for-date",
+        body=body
     )

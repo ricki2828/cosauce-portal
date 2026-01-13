@@ -94,6 +94,21 @@ async def get_current_director(
     return current_user
 
 
+async def get_current_team_leader(
+    current_user: dict = Depends(get_current_user)
+) -> dict:
+    """
+    Dependency to require team_leader role (or higher).
+    Raises HTTPException if user is not a team leader, director, or admin.
+    """
+    if current_user.get("role") not in ["team_leader", "director", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Team leader access required"
+        )
+    return current_user
+
+
 def get_client_ip(request: Request) -> Optional[str]:
     """Extract client IP address from request."""
     # Check X-Forwarded-For header (set by proxies)

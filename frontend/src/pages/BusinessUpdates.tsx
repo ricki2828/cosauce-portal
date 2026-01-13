@@ -9,11 +9,12 @@ import { MetricsManager } from '../components/business-updates/MetricsManager';
 import { ReportsExport } from '../components/business-updates/ReportsExport';
 import { BotControls } from '../components/business-updates/BotControls';
 import { ShiftReporting } from '../components/business-updates/ShiftReporting';
+import { SubmitUpdate } from '../components/business-updates/SubmitUpdate';
 
 type TabType = 'dashboard' | 'accounts' | 'team-leaders' | 'agents' | 'metrics' | 'reports' | 'shift-reporting' | 'bot-controls';
 
 export function BusinessUpdates() {
-  const {} = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
 
 
@@ -68,7 +69,9 @@ export function BusinessUpdates() {
         {activeTab === 'agents' && <AgentsManager />}
         {activeTab === 'metrics' && <MetricsManager />}
         {activeTab === 'reports' && <ReportsExport />}
-        {activeTab === 'shift-reporting' && <ShiftReporting />}
+        {activeTab === 'shift-reporting' && (
+          user?.role === 'team_leader' ? <SubmitUpdate /> : <ShiftReporting />
+        )}
         {activeTab === 'bot-controls' && <BotControls />}
       </div>
     </div>

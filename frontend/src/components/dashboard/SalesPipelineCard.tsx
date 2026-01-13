@@ -19,9 +19,9 @@ export function SalesPipelineCard({ stages, totalCompanies, totalSignals }: Sale
   const getStageIcon = (status: string) => {
     switch (status) {
       case 'new': return AlertCircle;
-      case 'target': return Target;
-      case 'contacted': return MessageCircle;
       case 'meeting': return Handshake;
+      case 'evaluation': return Target;
+      case 'design_implementation': return MessageCircle;
       default: return TrendingUp;
     }
   };
@@ -29,9 +29,9 @@ export function SalesPipelineCard({ stages, totalCompanies, totalSignals }: Sale
   const getStageColor = (status: string): string => {
     switch (status) {
       case 'new': return 'bg-blue-100 text-blue-800';
-      case 'target': return 'bg-purple-100 text-purple-800';
-      case 'contacted': return 'bg-amber-100 text-amber-800';
       case 'meeting': return 'bg-green-100 text-green-800';
+      case 'evaluation': return 'bg-purple-100 text-purple-800';
+      case 'design_implementation': return 'bg-amber-100 text-amber-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };

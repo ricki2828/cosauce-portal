@@ -16,6 +16,7 @@ from ..config import DATA_DIR
 router = APIRouter(prefix="/users", tags=["User Management"])
 auth_service = AuthService()
 DB_PATH = DATA_DIR / "portal.db"
+VALID_ROLES = ["admin", "director", "viewer", "team_leader"]
 
 
 # Request/Response Models
@@ -23,7 +24,7 @@ class CreateUserRequest(BaseModel):
     email: EmailStr
     name: str
     password: str
-    role: str = "viewer"  # admin, director, viewer
+    role: str = "viewer"  # admin, director, viewer, team_leader
 
 
 class UpdateUserRequest(BaseModel):
@@ -73,10 +74,10 @@ async def create_user(
     Create a new user (admin only).
     """
     # Validate role
-    if user_data.role not in ["admin", "director", "viewer"]:
+    if user_data.role not in VALID_ROLES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid role. Must be one of: admin, director, viewer"
+            detail=f"Invalid role. Must be one of: {', '.join(VALID_ROLES)}"
         )
 
     # Check if email already exists

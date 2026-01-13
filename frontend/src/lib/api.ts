@@ -6,7 +6,8 @@ import type {
   Agent, AgentCreate, AgentUpdate,
   Metric, MetricCreate, MetricUpdate,
   DashboardData, AgentReport, TrendData, BotHealth,
-  PaginatedResponse
+  PaginatedResponse,
+  TeamLeaderProfile, DirectSubmitRequest
 } from './business-updates-types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://cosauce.taiaroa.xyz';
@@ -694,6 +695,9 @@ export const peopleApi = {
   updateNewHire: (id: string, data: Partial<NewHireCreate>) =>
     api.put<NewHire>(`/api/people/new-hires/${id}`, data),
 
+  deleteNewHire: (id: string) =>
+    api.delete(`/api/people/new-hires/${id}`),
+
   completeTask: (newHireId: string, taskId: string, notes?: string) =>
     api.post(`/api/people/new-hires/${newHireId}/tasks/${taskId}/complete`, { notes }),
 
@@ -873,4 +877,93 @@ export const businessUpdatesApi = {
 
   updateShiftSettings: (data: any) =>
     api.put('/api/shift/settings', data),
+};
+
+// ==================== TEAM LEADER API ====================
+
+export const teamLeaderApi = {
+  // Get current user's team leader profile from Azure
+  getMyProfile: () =>
+    api.get<TeamLeaderProfile>('/api/business-updates/me/team-leader-profile'),
+
+  // Submit metrics directly (proxies to Azure)
+  submitUpdate: (data: DirectSubmitRequest) =>
+    api.post('/api/business-updates/submit-update', data),
+
+  // Get metrics for a specific account
+  getAccountMetrics: (accountId: string) =>
+    api.get<Metric[]>('/api/business-updates/metrics', { params: { account_id: accountId } }),
+
+  // Get accounts the team leader has access to
+  // Note: This fetches the profile and then gets full account details
+  getMyAccounts: async () => {
+    const { data: profile } = await api.get<TeamLeaderProfile>('/api/business-updates/me/team-leader-profile');
+    const accountPromises = profile.account_ids.map(id =>
+      api.get<Account>(`/api/business-updates/accounts/${id}`)
+    );
+    const accountResponses = await Promise.all(accountPromises);
+    return { data: accountResponses.map(r => r.data) };
+  },
+};
+
+// ==================== PIPELINE TYPES ====================
+
+export interface PipelineOpportunity {
+  id: string;
+  client_name: string;
+  size: string | null;
+  likelihood: 'high' | 'medium' | 'low';
+  status: 'new' | 'meeting' | 'evaluation' | 'design_implementation';
+  target_date: string | null;
+  notes: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PipelineOpportunityCreate {
+  client_name: string;
+  size?: string;
+  likelihood?: 'high' | 'medium' | 'low';
+  status?: 'new' | 'meeting' | 'evaluation' | 'design_implementation';
+  target_date?: string;
+  notes?: string;
+}
+
+export interface PipelineOpportunityUpdate {
+  client_name?: string;
+  size?: string;
+  likelihood?: 'high' | 'medium' | 'low';
+  status?: 'new' | 'meeting' | 'evaluation' | 'design_implementation';
+  target_date?: string;
+  notes?: string;
+}
+
+export interface PipelineStats {
+  total: number;
+  new: number;
+  target: number;
+  contacted: number;
+  meeting: number;
+}
+
+// Pipeline API
+export const pipelineApi = {
+  getOpportunities: (params?: { status?: string }) =>
+    api.get<PipelineOpportunity[]>('/api/pipeline/opportunities', { params }),
+
+  getOpportunity: (id: string) =>
+    api.get<PipelineOpportunity>(`/api/pipeline/opportunities/${id}`),
+
+  createOpportunity: (data: PipelineOpportunityCreate) =>
+    api.post<PipelineOpportunity>('/api/pipeline/opportunities', data),
+
+  updateOpportunity: (id: string, data: PipelineOpportunityUpdate) =>
+    api.put<PipelineOpportunity>(`/api/pipeline/opportunities/${id}`, data),
+
+  deleteOpportunity: (id: string) =>
+    api.delete(`/api/pipeline/opportunities/${id}`),
+
+  getStats: () =>
+    api.get<PipelineStats>('/api/pipeline/opportunities/stats'),
 };
