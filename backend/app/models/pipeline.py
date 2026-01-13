@@ -19,19 +19,19 @@ class PipelineOpportunityBase(BaseModel):
     notes: Optional[str] = None
 
 class PipelineOpportunityCreate(PipelineOpportunityBase):
-    status: Literal['new', 'meeting', 'evaluation', 'design_implementation'] = 'new'
+    status: Literal['new', 'meeting', 'assessing', 'implementation'] = 'new'
 
 class PipelineOpportunityUpdate(BaseModel):
     client_name: Optional[str] = None
     size: Optional[str] = None
     likelihood: Optional[Literal['high', 'medium', 'low']] = None
-    status: Optional[Literal['new', 'meeting', 'evaluation', 'design_implementation']] = None
+    status: Optional[Literal['new', 'meeting', 'assessing', 'implementation']] = None
     target_date: Optional[date] = None
     notes: Optional[str] = None
 
 class PipelineOpportunity(PipelineOpportunityBase):
     id: str
-    status: Literal['new', 'meeting', 'evaluation', 'design_implementation']
+    status: Literal['new', 'meeting', 'assessing', 'implementation']
     created_by: str
     created_at: datetime
     updated_at: datetime
@@ -40,5 +40,5 @@ class PipelineStats(BaseModel):
     total: int
     new: int
     meeting: int
-    evaluation: int
-    design_implementation: int
+    assessing: int
+    implementation: int

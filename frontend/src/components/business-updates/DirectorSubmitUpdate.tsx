@@ -64,23 +64,18 @@ export function DirectorSubmitUpdate() {
 
   const loadAccountsForTeamLeader = async (teamLeader: TeamLeader) => {
     try {
-      // If team leader has accounts embedded, use those
-      if (teamLeader.accounts && teamLeader.accounts.length > 0) {
-        // Fetch full account details for each account_id
-        const accountPromises = teamLeader.account_ids.map(id =>
-          businessUpdatesApi.getAccount(id).catch(() => null)
-        );
-        const accountResults = await Promise.all(accountPromises);
-        const validAccounts = accountResults
-          .filter((result): result is { data: Account } => result !== null)
-          .map(result => result.data);
-        setAccounts(validAccounts);
+      // Fetch full account details for each account_id
+      const accountPromises = teamLeader.account_ids.map(id =>
+        businessUpdatesApi.getAccount(id).catch(() => null)
+      );
+      const accountResults = await Promise.all(accountPromises);
+      const validAccounts = accountResults
+        .filter(result => result !== null)
+        .map(result => result!.data);
+      setAccounts(validAccounts);
 
-        if (validAccounts.length === 1) {
-          setSelectedAccount(validAccounts[0].id);
-        }
-      } else {
-        setAccounts([]);
+      if (validAccounts.length === 1) {
+        setSelectedAccount(validAccounts[0].id);
       }
     } catch (err) {
       setError('Failed to load accounts for this team leader.');

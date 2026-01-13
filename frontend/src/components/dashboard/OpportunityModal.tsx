@@ -14,7 +14,7 @@ export function OpportunityModal({ isOpen, onClose, onSave, opportunity }: Oppor
     client_name: '',
     size: '',
     likelihood: 'medium' as 'high' | 'medium' | 'low',
-    status: 'new' as 'new' | 'meeting' | 'evaluation' | 'design_implementation',
+    status: 'new' as 'new' | 'meeting' | 'assessing' | 'implementation',
     target_date: '',
     notes: '',
   });
@@ -148,13 +148,13 @@ export function OpportunityModal({ isOpen, onClose, onSave, opportunity }: Oppor
                 id="status"
                 required
                 value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as 'new' | 'meeting' | 'evaluation' | 'design_implementation' })}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as 'new' | 'meeting' | 'assessing' | 'implementation' })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="new">New</option>
+                <option value="new">New Leads</option>
                 <option value="meeting">Meeting</option>
-                <option value="evaluation">Evaluation</option>
-                <option value="design_implementation">Design & Implementation</option>
+                <option value="assessing">Assessing</option>
+                <option value="implementation">Implementation</option>
               </select>
             </div>
 

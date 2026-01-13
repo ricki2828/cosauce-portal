@@ -8,7 +8,6 @@ import { AgentsManager } from '../components/business-updates/AgentsManager';
 import { MetricsManager } from '../components/business-updates/MetricsManager';
 import { ReportsExport } from '../components/business-updates/ReportsExport';
 import { BotControls } from '../components/business-updates/BotControls';
-import { ShiftReporting } from '../components/business-updates/ShiftReporting';
 import { SubmitUpdate } from '../components/business-updates/SubmitUpdate';
 import { DirectorSubmitUpdate } from '../components/business-updates/DirectorSubmitUpdate';
 

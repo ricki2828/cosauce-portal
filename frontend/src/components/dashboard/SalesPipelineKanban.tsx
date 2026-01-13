@@ -15,9 +15,9 @@ interface KanbanColumn {
 
 const columns: KanbanColumn[] = [
   { id: 'new', label: 'New Leads', color: 'text-blue-700', bgColor: 'bg-blue-50' },
-  { id: 'target', label: 'Qualified', color: 'text-purple-700', bgColor: 'bg-purple-50' },
-  { id: 'contacted', label: 'Contacted', color: 'text-amber-700', bgColor: 'bg-amber-50' },
-  { id: 'meeting', label: 'Meeting', color: 'text-green-700', bgColor: 'bg-green-50' },
+  { id: 'meeting', label: 'Meeting', color: 'text-purple-700', bgColor: 'bg-purple-50' },
+  { id: 'assessing', label: 'Assessing', color: 'text-amber-700', bgColor: 'bg-amber-50' },
+  { id: 'implementation', label: 'Implementation', color: 'text-green-700', bgColor: 'bg-green-50' },
 ];
 
 export function SalesPipelineKanban({ opportunities, onEditOpportunity }: SalesPipelineKanbanProps) {

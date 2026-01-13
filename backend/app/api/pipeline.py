@@ -58,8 +58,8 @@ async def get_pipeline_stats(
                 COUNT(*) as total,
                 SUM(CASE WHEN status = 'new' THEN 1 ELSE 0 END) as new,
                 SUM(CASE WHEN status = 'meeting' THEN 1 ELSE 0 END) as meeting,
-                SUM(CASE WHEN status = 'evaluation' THEN 1 ELSE 0 END) as evaluation,
-                SUM(CASE WHEN status = 'design_implementation' THEN 1 ELSE 0 END) as design_implementation
+                SUM(CASE WHEN status = 'assessing' THEN 1 ELSE 0 END) as assessing,
+                SUM(CASE WHEN status = 'implementation' THEN 1 ELSE 0 END) as implementation
             FROM pipeline_opportunities
         """) as cursor:
             row = await cursor.fetchone()
