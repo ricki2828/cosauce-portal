@@ -772,7 +772,7 @@ export const businessUpdatesApi = {
   // Metrics
   // ============================================
 
-  getMetrics: (params?: { account_id?: string }) =>
+  getMetrics: (params: { account_id: string }) =>
     api.get<Metric[]>('/api/business-updates/metrics', { params }),
 
   createMetric: (data: MetricCreate) =>
@@ -913,7 +913,7 @@ export interface PipelineOpportunity {
   client_name: string;
   size: string | null;
   likelihood: 'high' | 'medium' | 'low';
-  status: 'new' | 'meeting' | 'evaluation' | 'design_implementation';
+  status: 'new' | 'meeting' | 'assessing' | 'implementation';
   target_date: string | null;
   notes: string | null;
   created_by: string;
@@ -925,7 +925,7 @@ export interface PipelineOpportunityCreate {
   client_name: string;
   size?: string;
   likelihood?: 'high' | 'medium' | 'low';
-  status?: 'new' | 'meeting' | 'evaluation' | 'design_implementation';
+  status?: 'new' | 'meeting' | 'assessing' | 'implementation';
   target_date?: string;
   notes?: string;
 }
@@ -934,7 +934,7 @@ export interface PipelineOpportunityUpdate {
   client_name?: string;
   size?: string;
   likelihood?: 'high' | 'medium' | 'low';
-  status?: 'new' | 'meeting' | 'evaluation' | 'design_implementation';
+  status?: 'new' | 'meeting' | 'assessing' | 'implementation';
   target_date?: string;
   notes?: string;
 }
@@ -942,9 +942,9 @@ export interface PipelineOpportunityUpdate {
 export interface PipelineStats {
   total: number;
   new: number;
-  target: number;
-  contacted: number;
   meeting: number;
+  assessing: number;
+  implementation: number;
 }
 
 // Pipeline API

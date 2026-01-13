@@ -365,12 +365,12 @@ async def delete_agent(
 
 @router.get("/metrics")
 async def list_metrics(
-    account_id: Optional[str] = None,
+    account_id: str,  # REQUIRED by Azure API
     page: int = 1,
     page_size: int = 50,
     current_user = Depends(get_current_user)
 ):
-    """List metric definitions, optionally filtered by account"""
+    """List metric definitions for an account (account_id is required)"""
     return await proxy_list_request(
         method="GET",
         path="/api/metrics",
@@ -722,5 +722,137 @@ async def submit_update_direct(
     return await proxy_request(
         method="POST",
         path="/api/updates/submit-for-date",
+        body=body
+    )
+
+
+# ============================================
+# Shift Reporting Endpoints
+# ============================================
+
+@router.post("/shift/submit", status_code=status.HTTP_201_CREATED)
+async def submit_shift_update(
+    request: Request,
+    current_user = Depends(get_current_team_leader)
+):
+    """Submit a shift update (SOS or EOS)"""
+    body = await request.json()
+    return await proxy_request(
+        method="POST",
+        path="/api/shift/submit",
+        body=body
+    )
+
+
+@router.get("/shift/compliance")
+async def get_shift_compliance(
+    target_date: str,
+    current_user = Depends(get_current_user)
+):
+    """Get shift compliance statistics for a specific date"""
+    return await proxy_request(
+        method="GET",
+        path="/api/shift/compliance",
+        query_params={"target_date": target_date}
+    )
+
+
+@router.get("/shift/updates")
+async def list_shift_updates(
+    shift_date: Optional[str] = None,
+    team_leader_id: Optional[str] = None,
+    shift_type: Optional[str] = None,
+    current_user = Depends(get_current_user)
+):
+    """List shift updates with optional filters"""
+    return await proxy_request(
+        method="GET",
+        path="/api/shift/updates",
+        query_params={
+            "shift_date": shift_date,
+            "team_leader_id": team_leader_id,
+            "shift_type": shift_type
+        }
+    )
+
+
+@router.get("/shift/updates/{update_id}")
+async def get_shift_update(
+    update_id: str,
+    current_user = Depends(get_current_user)
+):
+    """Get a specific shift update by ID"""
+    return await proxy_request(
+        method="GET",
+        path=f"/api/shift/updates/{update_id}"
+    )
+
+
+@router.post("/shift/eod", status_code=status.HTTP_201_CREATED)
+async def generate_eod_report(
+    request: Request,
+    current_user = Depends(get_current_director)
+):
+    """Generate an End of Day (EOD) report"""
+    body = await request.json()
+    return await proxy_request(
+        method="POST",
+        path="/api/shift/eod",
+        body=body
+    )
+
+
+@router.get("/shift/eod-reports")
+async def list_eod_reports(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    report_type: Optional[str] = None,
+    current_user = Depends(get_current_user)
+):
+    """List EOD reports with optional filters"""
+    return await proxy_request(
+        method="GET",
+        path="/api/shift/eod-reports",
+        query_params={
+            "date_from": date_from,
+            "date_to": date_to,
+            "report_type": report_type
+        }
+    )
+
+
+@router.get("/shift/eod-reports/{report_id}")
+async def get_eod_report(
+    report_id: str,
+    current_user = Depends(get_current_user)
+):
+    """Get a specific EOD report by ID"""
+    return await proxy_request(
+        method="GET",
+        path=f"/api/shift/eod-reports/{report_id}"
+    )
+
+
+@router.get("/shift/settings")
+async def get_shift_settings(
+    current_user = Depends(get_current_user)
+):
+    """Get current shift reporting configuration settings"""
+    return await proxy_request(
+        method="GET",
+        path="/api/shift/settings"
+    )
+
+
+@router.put("/shift/settings")
+async def update_shift_settings(
+    request: Request,
+    current_user = Depends(get_current_director)
+):
+    """Update shift reporting configuration settings"""
+    body = await request.json()
+    return await proxy_request(
+        method="PUT",
+        path="/api/shift/settings",
         body=body
     )

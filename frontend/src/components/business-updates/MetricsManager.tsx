@@ -43,14 +43,19 @@ export function MetricsManager() {
   const loadMetrics = async () => {
     try {
       setLoading(true);
-      const params: any = {};
-      if (selectedAccountFilter) {
-        params.account_id = selectedAccountFilter;
+
+      // Metrics are account-specific, so only load when an account is selected
+      if (!selectedAccountFilter) {
+        setMetrics([]);
+        setLoading(false);
+        return;
       }
-      const response = await businessUpdatesApi.getMetrics(params);
+
+      const response = await businessUpdatesApi.getMetrics({ account_id: selectedAccountFilter });
       setMetrics(response.data);
     } catch (error) {
       console.error('Failed to load metrics:', error);
+      setMetrics([]);
     } finally {
       setLoading(false);
     }
