@@ -51,11 +51,11 @@ export default function UserMenu() {
               <button
                 onClick={() => {
                   setIsOpen(false);
-                  navigate('/users');
+                  navigate('/settings');
                 }}
                 className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
               >
-                User Management
+                Settings
               </button>
             )}
             <button
