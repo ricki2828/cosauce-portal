@@ -366,15 +366,13 @@ async def delete_agent(
 @router.get("/metrics")
 async def list_metrics(
     account_id: str,  # REQUIRED by Azure API
-    page: int = 1,
-    page_size: int = 50,
     current_user = Depends(get_current_user)
 ):
     """List metric definitions for an account (account_id is required)"""
-    return await proxy_list_request(
+    return await proxy_request(
         method="GET",
         path="/api/metrics",
-        query_params={"account_id": account_id, "page": page, "page_size": page_size}
+        query_params={"account_id": account_id}
     )
 
 
