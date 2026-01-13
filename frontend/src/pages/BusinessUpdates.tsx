@@ -10,6 +10,7 @@ import { ReportsExport } from '../components/business-updates/ReportsExport';
 import { BotControls } from '../components/business-updates/BotControls';
 import { ShiftReporting } from '../components/business-updates/ShiftReporting';
 import { SubmitUpdate } from '../components/business-updates/SubmitUpdate';
+import { DirectorSubmitUpdate } from '../components/business-updates/DirectorSubmitUpdate';
 
 type TabType = 'dashboard' | 'accounts' | 'team-leaders' | 'agents' | 'metrics' | 'reports' | 'shift-reporting' | 'bot-controls';
 
@@ -70,7 +71,7 @@ export function BusinessUpdates() {
         {activeTab === 'metrics' && <MetricsManager />}
         {activeTab === 'reports' && <ReportsExport />}
         {activeTab === 'shift-reporting' && (
-          user?.role === 'team_leader' ? <SubmitUpdate /> : <ShiftReporting />
+          user?.role === 'team_leader' ? <SubmitUpdate /> : <DirectorSubmitUpdate />
         )}
         {activeTab === 'bot-controls' && <BotControls />}
       </div>
