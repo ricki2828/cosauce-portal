@@ -164,7 +164,7 @@ export function Sales() {
     });
 
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://cosauce.taiaroa.xyz';
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://91.98.79.241:8004';
 
       // Use fetch with streaming to support POST requests
       const response = await fetch(`${API_BASE_URL}/api/sales/bulk/analyze-bpo-stream`, {
@@ -357,6 +357,7 @@ export function Sales() {
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground/40" strokeWidth={2.5} />
             <input
               type="text"
+              autoComplete="off"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-12 pr-6 py-4 bg-input border-2 border-border rounded-full text-foreground placeholder-mutedForeground font-body focus:outline-none focus:border-accent focus:shadow-pop transition-all"

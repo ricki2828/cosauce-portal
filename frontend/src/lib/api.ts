@@ -10,7 +10,7 @@ import type {
   TeamLeaderProfile, DirectSubmitRequest
 } from './business-updates-types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://cosauce.taiaroa.xyz';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://91.98.79.241:8004';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -746,8 +746,8 @@ export const businessUpdatesApi = {
   updateTeamLeader: (id: string, data: TeamLeaderUpdate) =>
     api.put<TeamLeader>(`/api/business-updates/team-leaders/${id}`, data),
 
-  deleteTeamLeader: (id: string) =>
-    api.delete(`/api/business-updates/team-leaders/${id}`),
+  deleteTeamLeader: (id: string, hardDelete: boolean = false) =>
+    api.delete(`/api/business-updates/team-leaders/${id}`, { params: { hard_delete: hardDelete } }),
 
   // ============================================
   // Agents
