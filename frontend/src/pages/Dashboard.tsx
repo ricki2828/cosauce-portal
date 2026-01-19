@@ -70,8 +70,12 @@ export function Dashboard() {
     try {
       setRequisitionsLoading(true);
       setRequisitionsError(null);
-      const response = await peopleApi.getRequisitions('open');
-      setRequisitions(response.data);
+      // Fetch all requisitions and filter for active ones (open, interviewing, pending)
+      const response = await peopleApi.getRequisitions();
+      const activeRequisitions = response.data.filter(
+        req => ['open', 'interviewing', 'pending'].includes(req.status)
+      );
+      setRequisitions(activeRequisitions);
     } catch (err: any) {
       console.error('Failed to load requisitions:', err);
       setRequisitionsError(err.response?.data?.detail || 'Failed to load requisitions');
@@ -85,8 +89,12 @@ export function Dashboard() {
     try {
       setNewHiresLoading(true);
       setNewHiresError(null);
-      const response = await peopleApi.getNewHires('active');
-      setNewHires(response.data);
+      // Fetch all new hires and filter for active onboarding (pending, active)
+      const response = await peopleApi.getNewHires();
+      const activeHires = response.data.filter(
+        hire => ['pending', 'active'].includes(hire.status)
+      );
+      setNewHires(activeHires);
     } catch (err: any) {
       console.error('Failed to load new hires:', err);
       setNewHiresError(err.response?.data?.detail || 'Failed to load new hires');
@@ -201,10 +209,10 @@ export function Dashboard() {
         emptyMessage="No requisitions or new hires."
       >
         <div className="space-y-6">
-          {/* Row 1: Open Requisitions */}
+          {/* Row 1: Active Requisitions */}
           {requisitions.length > 0 && (
             <div>
-              <h4 className="text-sm font-medium text-gray-700 mb-3">Open Requisitions</h4>
+              <h4 className="text-sm font-medium text-gray-700 mb-3">Active Requisitions</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {requisitions.map((req) => (
                   <RequisitionMiniCard key={req.id} requisition={req} />
