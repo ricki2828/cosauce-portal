@@ -100,12 +100,12 @@ async def get_requisition_stats(
 
         async with db.execute("""
             SELECT
-                SUM(rr.requested_count) as total,
-                SUM(CASE WHEN r.status = 'open' THEN (rr.requested_count - rr.filled_count) ELSE 0 END) as open,
-                SUM(CASE WHEN r.status = 'interviewing' THEN (rr.requested_count - rr.filled_count) ELSE 0 END) as interviewing,
-                SUM(CASE WHEN r.status = 'offer_made' THEN (rr.requested_count - rr.filled_count) ELSE 0 END) as offer_made,
-                SUM(rr.filled_count) as filled,
-                SUM(CASE WHEN r.status = 'cancelled' THEN rr.requested_count ELSE 0 END) as cancelled
+                COALESCE(SUM(rr.requested_count), 0) as total,
+                COALESCE(SUM(CASE WHEN r.status = 'open' THEN (rr.requested_count - rr.filled_count) ELSE 0 END), 0) as open,
+                COALESCE(SUM(CASE WHEN r.status = 'interviewing' THEN (rr.requested_count - rr.filled_count) ELSE 0 END), 0) as interviewing,
+                COALESCE(SUM(CASE WHEN r.status = 'offer_made' THEN (rr.requested_count - rr.filled_count) ELSE 0 END), 0) as offer_made,
+                COALESCE(SUM(rr.filled_count), 0) as filled,
+                COALESCE(SUM(CASE WHEN r.status = 'cancelled' THEN rr.requested_count ELSE 0 END), 0) as cancelled
             FROM requisitions r
             LEFT JOIN requisition_roles rr ON r.id = rr.requisition_id
         """) as cursor:
