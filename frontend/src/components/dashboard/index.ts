@@ -1,7 +1,10 @@
 export { DashboardSection } from './DashboardSection';
 export { PriorityCard } from './PriorityCard';
 export { PerformanceCard } from './PerformanceCard';
+export { KPICards } from './KPICards';
+export { ViewModeToggle } from './ViewModeToggle';
 export { RequisitionMiniCard } from './RequisitionMiniCard';
+export { RequisitionsSummaryCard } from './RequisitionsSummaryCard';
 export { NewHireMiniCard } from './NewHireMiniCard';
 export { SalesPipelineCard } from './SalesPipelineCard';
 export { SalesPipelineKanban } from './SalesPipelineKanban';
