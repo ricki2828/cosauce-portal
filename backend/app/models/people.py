@@ -59,7 +59,7 @@ class RequisitionCreate(RequisitionBase):
 class RequisitionUpdate(BaseModel):
     title: Optional[str] = None
     department: Optional[str] = None
-    status: Optional[Literal['open', 'interviewing', 'offer_made', 'filled', 'cancelled']] = None
+    status: Optional[Literal['pending', 'open', 'interviewing', 'offer_made', 'filled', 'cancelled']] = None
     location: Optional[str] = None
     employment_type: Optional[Literal['full_time', 'part_time', 'contract', 'intern']] = None
     priority: Optional[Literal['low', 'medium', 'high', 'urgent']] = None
@@ -75,7 +75,7 @@ class RequisitionRoleUpdate(BaseModel):
 
 class Requisition(RequisitionBase):
     id: str
-    status: Literal['open', 'interviewing', 'offer_made', 'filled', 'cancelled']
+    status: Literal['pending', 'open', 'interviewing', 'offer_made', 'filled', 'cancelled']
     headcount: int = 0  # Legacy field - now computed from roles
     filled_date: Optional[date] = None
     created_by: str

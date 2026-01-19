@@ -19,19 +19,19 @@ class PipelineOpportunityBase(BaseModel):
     notes: Optional[str] = None
 
 class PipelineOpportunityCreate(PipelineOpportunityBase):
-    status: Literal['new', 'meeting', 'assessing', 'implementation'] = 'new'
+    status: Literal['new', 'meeting', 'assessing', 'implementation', 'blocked'] = 'new'
 
 class PipelineOpportunityUpdate(BaseModel):
     client_name: Optional[str] = None
     size: Optional[str] = None
     likelihood: Optional[Literal['high', 'medium', 'low']] = None
-    status: Optional[Literal['new', 'meeting', 'assessing', 'implementation']] = None
+    status: Optional[Literal['new', 'meeting', 'assessing', 'implementation', 'blocked']] = None
     target_date: Optional[date] = None
     notes: Optional[str] = None
 
 class PipelineOpportunity(PipelineOpportunityBase):
     id: str
-    status: Literal['new', 'meeting', 'assessing', 'implementation']
+    status: Literal['new', 'meeting', 'assessing', 'implementation', 'blocked']
     created_by: str
     created_at: datetime
     updated_at: datetime
