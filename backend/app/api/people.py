@@ -14,7 +14,7 @@ from ..models.people import (
     # Requisitions
     RequisitionCreate, RequisitionUpdate, Requisition, RequisitionStats,
     RequisitionWithRoles, RequisitionRoleCreate, RequisitionRoleUpdate,
-    RequisitionRoleResponse,
+    RequisitionRoleResponse, RequisitionCommentCreate, RequisitionComment,
     # Templates
     OnboardingTemplateCreate, OnboardingTemplateUpdate, OnboardingTemplate,
     OnboardingTemplateWithTasks, TemplateTaskCreate, TemplateTaskUpdate, TemplateTask,
@@ -447,6 +447,51 @@ async def increment_role_filled(
             role = dict(row)
             role['remaining_count'] = max(0, role['requested_count'] - role['filled_count'])
             return role
+
+@router.post("/requisitions/{requisition_id}/comments", response_model=RequisitionComment, status_code=status.HTTP_201_CREATED)
+async def add_requisition_comment(
+    requisition_id: str,
+    comment: RequisitionCommentCreate,
+    current_user = Depends(get_current_user)
+):
+    """Add a comment to a requisition"""
+    async with aiosqlite.connect(DATA_DIR / "portal.db") as db:
+        # Check if requisition exists
+        async with db.execute("SELECT id FROM requisitions WHERE id = ?", (requisition_id,)) as cursor:
+            existing = await cursor.fetchone()
+
+        if not existing:
+            raise HTTPException(status_code=404, detail="Requisition not found")
+
+        comment_id = str(uuid.uuid4())
+        now = datetime.utcnow().isoformat()
+
+        # Get author name
+        async with db.execute("SELECT name FROM users WHERE id = ?", (current_user['id'],)) as cursor:
+            user_row = await cursor.fetchone()
+            author_name = user_row[0] if user_row else "Unknown"
+
+        # Insert comment
+        await db.execute("""
+            INSERT INTO requisition_comments (id, requisition_id, author_id, author_name, content, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (comment_id, requisition_id, current_user['id'], author_name, comment.content, now))
+
+        # Update requisition's updated_at timestamp
+        await db.execute("""
+            UPDATE requisitions SET updated_at = ? WHERE id = ?
+        """, (now, requisition_id))
+
+        await db.commit()
+
+        return RequisitionComment(
+            id=comment_id,
+            requisition_id=requisition_id,
+            author_id=current_user['id'],
+            author_name=author_name,
+            content=comment.content,
+            created_at=now
+        )
 
 # ============================================
 # Onboarding Templates Endpoints

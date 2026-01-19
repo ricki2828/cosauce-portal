@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Flag, BarChart3, Users, TrendingUp, Plus } from 'lucide-react';
 import { prioritiesApi, peopleApi, pipelineApi } from '../lib/api';
-import type { Requisition, NewHire, PipelineOpportunity, PipelineOpportunityCreate, PipelineOpportunityUpdate } from '../lib/api';
+import type { Requisition, RequisitionStats, NewHire, PipelineOpportunity, PipelineOpportunityCreate, PipelineOpportunityUpdate } from '../lib/api';
 import type { Priority } from '../lib/priorities-types';
 import {
   DashboardSection,
@@ -26,6 +26,7 @@ export function Dashboard() {
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
   const [requisitionsLoading, setRequisitionsLoading] = useState(true);
   const [requisitionsError, setRequisitionsError] = useState<string | null>(null);
+  const [requisitionStats, setRequisitionStats] = useState<RequisitionStats | null>(null);
 
   const [newHires, setNewHires] = useState<NewHire[]>([]);
   const [newHiresLoading, setNewHiresLoading] = useState(true);
@@ -76,6 +77,17 @@ export function Dashboard() {
         req => ['open', 'interviewing', 'pending'].includes(req.status)
       );
       setRequisitions(activeRequisitions);
+
+      // Fetch requisition stats
+      try {
+        console.log('Fetching requisition stats for Dashboard...');
+        const statsResponse = await peopleApi.getRequisitionStats();
+        console.log('Dashboard requisition stats loaded:', statsResponse.data);
+        setRequisitionStats(statsResponse.data);
+      } catch (statsError: any) {
+        console.error('Failed to load requisition stats:', statsError);
+        console.error('Stats error details:', statsError.response?.data);
+      }
     } catch (err: any) {
       console.error('Failed to load requisitions:', err);
       setRequisitionsError(err.response?.data?.detail || 'Failed to load requisitions');
@@ -177,7 +189,7 @@ export function Dashboard() {
       >
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3">
           {priorities.map((priority) => (
-            <PriorityCard key={priority.id} priority={priority} />
+            <PriorityCard key={priority.id} priority={priority} onCommentAdded={loadPriorities} />
           ))}
         </div>
       </DashboardSection>
@@ -209,13 +221,47 @@ export function Dashboard() {
         emptyMessage="No requisitions or new hires."
       >
         <div className="space-y-6">
+          {/* Requisition Summary Stats */}
+          {requisitionStats ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <div className="bg-white rounded-lg border border-gray-200 p-4">
+                <div className="text-sm text-gray-500 mb-1">Total</div>
+                <div className="text-2xl font-bold text-gray-900">{requisitionStats.total}</div>
+              </div>
+              <div className="bg-white rounded-lg border border-blue-200 p-4">
+                <div className="text-sm text-blue-600 mb-1">Open</div>
+                <div className="text-2xl font-bold text-blue-900">{requisitionStats.open}</div>
+              </div>
+              <div className="bg-white rounded-lg border border-yellow-200 p-4">
+                <div className="text-sm text-yellow-600 mb-1">Interviewing</div>
+                <div className="text-2xl font-bold text-yellow-900">{requisitionStats.interviewing}</div>
+              </div>
+              <div className="bg-white rounded-lg border border-purple-200 p-4">
+                <div className="text-sm text-purple-600 mb-1">Offer Made</div>
+                <div className="text-2xl font-bold text-purple-900">{requisitionStats.offer_made}</div>
+              </div>
+              <div className="bg-white rounded-lg border border-green-200 p-4">
+                <div className="text-sm text-green-600 mb-1">Filled</div>
+                <div className="text-2xl font-bold text-green-900">{requisitionStats.filled}</div>
+              </div>
+              <div className="bg-white rounded-lg border border-red-200 p-4">
+                <div className="text-sm text-red-600 mb-1">Cancelled</div>
+                <div className="text-2xl font-bold text-red-900">{requisitionStats.cancelled}</div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <p className="text-sm text-yellow-700">Stats not loaded (check console for details)</p>
+            </div>
+          )}
+
           {/* Row 1: Active Requisitions */}
           {requisitions.length > 0 && (
             <div>
               <h4 className="text-sm font-medium text-gray-700 mb-3">Active Requisitions</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {requisitions.map((req) => (
-                  <RequisitionMiniCard key={req.id} requisition={req} />
+                  <RequisitionMiniCard key={req.id} requisition={req} onCommentAdded={loadRequisitions} />
                 ))}
               </div>
             </div>
@@ -254,7 +300,11 @@ export function Dashboard() {
           </button>
         }
       >
-        <SalesPipelineKanban opportunities={opportunities} onEditOpportunity={handleEditOpportunity} />
+        <SalesPipelineKanban
+          opportunities={opportunities}
+          onEditOpportunity={handleEditOpportunity}
+          onCommentAdded={loadOpportunities}
+        />
       </DashboardSection>
 
       {/* Opportunity Modal */}

@@ -82,8 +82,21 @@ class Requisition(RequisitionBase):
     created_at: datetime  # This is the "date requested"
     updated_at: datetime
 
+class RequisitionCommentCreate(BaseModel):
+    """Create a new comment on a requisition"""
+    content: str
+
 class RequisitionComment(BaseModel):
-    """Latest comment on a requisition"""
+    """Comment on a requisition"""
+    id: str
+    requisition_id: str
+    author_id: Optional[str] = None
+    author_name: str
+    content: str
+    created_at: datetime
+
+class RequisitionCommentLatest(BaseModel):
+    """Latest comment on a requisition (for list view)"""
     content: str
     author_name: str
     created_at: datetime
@@ -91,7 +104,7 @@ class RequisitionComment(BaseModel):
 class RequisitionWithRoles(Requisition):
     """Requisition with all role lines included"""
     roles: list[RequisitionRoleResponse] = []
-    latest_comment: Optional[RequisitionComment] = None
+    latest_comment: Optional[RequisitionCommentLatest] = None
 
     @property
     def total_requested(self) -> int:
@@ -231,3 +244,47 @@ class NewHireStats(BaseModel):
     active: int
     completed: int
     cancelled: int
+
+# ============================================
+# Onboarding Checklist Models (actual schema)
+# ============================================
+
+class StageCreate(BaseModel):
+    stage_label: str
+    stage_category: Optional[str] = None
+
+class ChecklistStage(BaseModel):
+    id: str
+    checklist_item_id: str
+    stage_label: str
+    stage_category: Optional[str] = None
+    stage_order: int
+    is_completed: bool = False
+    completed_at: Optional[datetime] = None
+    completed_by: Optional[str] = None
+    notes: Optional[str] = None
+
+class ChecklistStageUpdate(BaseModel):
+    is_completed: Optional[bool] = None
+    notes: Optional[str] = None
+
+class ChecklistItemCreate(BaseModel):
+    item_name: str
+    order_index: int
+    stages: list[StageCreate] = []
+
+class ChecklistItemUpdate(BaseModel):
+    item_name: Optional[str] = None
+    order_index: Optional[int] = None
+
+class ChecklistItemReorder(BaseModel):
+    item_id: str
+    new_order: int
+
+class ChecklistItem(BaseModel):
+    id: str
+    team_member_id: str
+    item_name: str
+    order_index: int
+    created_at: datetime
+    stages: list[ChecklistStage] = []

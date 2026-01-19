@@ -1,9 +1,13 @@
+import { useState } from 'react';
 import type { PipelineOpportunity } from '../../lib/api';
-import { Building2, TrendingUp, Calendar, Target } from 'lucide-react';
+import { Building2, TrendingUp, Calendar, Target, MessageSquarePlus } from 'lucide-react';
+import { pipelineApi } from '../../lib/api';
+import AddCommentModal from './AddCommentModal';
 
 interface SalesPipelineKanbanProps {
   opportunities: PipelineOpportunity[];
   onEditOpportunity: (opportunity: PipelineOpportunity) => void;
+  onCommentAdded?: () => void;
 }
 
 interface KanbanColumn {
@@ -20,9 +24,26 @@ const columns: KanbanColumn[] = [
   { id: 'implementation', label: 'Implementation', color: 'text-green-700', bgColor: 'bg-green-50' },
 ];
 
-export function SalesPipelineKanban({ opportunities, onEditOpportunity }: SalesPipelineKanbanProps) {
+export function SalesPipelineKanban({ opportunities, onEditOpportunity, onCommentAdded }: SalesPipelineKanbanProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedOpportunity, setSelectedOpportunity] = useState<PipelineOpportunity | null>(null);
+
   const getOpportunitiesByStatus = (status: string) => {
     return opportunities.filter(opp => opp.status === status);
+  };
+
+  const handleAddComment = async (content: string) => {
+    if (!selectedOpportunity) return;
+    await pipelineApi.addOpportunityComment(selectedOpportunity.id, { content });
+    if (onCommentAdded) {
+      onCommentAdded();
+    }
+  };
+
+  const handleCommentClick = (e: React.MouseEvent, opportunity: PipelineOpportunity) => {
+    e.stopPropagation();
+    setSelectedOpportunity(opportunity);
+    setIsModalOpen(true);
   };
 
   const getLikelihoodDisplay = (likelihood: 'high' | 'medium' | 'low'): string => {
@@ -116,6 +137,17 @@ export function SalesPipelineKanban({ opportunities, onEditOpportunity }: SalesP
                       )}
                     </div>
                   )}
+
+                  {/* Add Comment Button */}
+                  <div className={`${opportunity.notes ? 'mt-2' : 'mt-2'} pt-2 border-t border-gray-100`}>
+                    <button
+                      onClick={(e) => handleCommentClick(e, opportunity)}
+                      className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:underline"
+                    >
+                      <MessageSquarePlus className="w-3.5 h-3.5" />
+                      Add note
+                    </button>
+                  </div>
                 </button>
               ))}
 
@@ -128,6 +160,15 @@ export function SalesPipelineKanban({ opportunities, onEditOpportunity }: SalesP
           </div>
         );
       })}
+
+      {/* Add Comment Modal */}
+      <AddCommentModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleAddComment}
+        title={selectedOpportunity ? `Add Note: ${selectedOpportunity.client_name}` : 'Add Note'}
+        placeholder="Enter note about this opportunity..."
+      />
     </div>
   );
 }

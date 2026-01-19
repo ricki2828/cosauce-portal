@@ -494,10 +494,23 @@ export interface RequisitionRoleUpdate {
   filled_count?: number;
 }
 
-export interface RequisitionComment {
+export interface RequisitionCommentLatest {
   content: string;
   author_name: string;
   created_at: string;
+}
+
+export interface RequisitionComment {
+  id: string;
+  requisition_id: string;
+  author_id: string | null;
+  author_name: string;
+  content: string;
+  created_at: string;
+}
+
+export interface RequisitionCommentCreate {
+  content: string;
 }
 
 export interface Requisition {
@@ -518,7 +531,7 @@ export interface Requisition {
   created_at: string;  // Date requested
   updated_at: string;
   roles: RequisitionRole[];  // Role lines with remaining counts
-  latest_comment: RequisitionComment | null;  // Latest comment with author
+  latest_comment: RequisitionCommentLatest | null;  // Latest comment with author
 }
 
 export interface RequisitionCreate {
@@ -676,6 +689,10 @@ export const peopleApi = {
 
   incrementRoleFilled: (requisitionId: string, roleId: string, count?: number) =>
     api.post<RequisitionRole>(`/api/people/requisitions/${requisitionId}/roles/${roleId}/fill`, null, { params: { count } }),
+
+  // Requisition Comments
+  addRequisitionComment: (requisitionId: string, data: RequisitionCommentCreate) =>
+    api.post<RequisitionComment>(`/api/people/requisitions/${requisitionId}/comments`, data),
 
   // Onboarding Templates
   getTemplates: () =>
@@ -916,6 +933,19 @@ export const teamLeaderApi = {
 
 // ==================== PIPELINE TYPES ====================
 
+export interface OpportunityComment {
+  id: string;
+  opportunity_id: string;
+  author_id: string | null;
+  author_name: string;
+  content: string;
+  created_at: string;
+}
+
+export interface OpportunityCommentCreate {
+  content: string;
+}
+
 export interface PipelineOpportunity {
   id: string;
   client_name: string;
@@ -975,4 +1005,8 @@ export const pipelineApi = {
 
   getStats: () =>
     api.get<PipelineStats>('/api/pipeline/opportunities/stats'),
+
+  // Opportunity Comments
+  addOpportunityComment: (opportunityId: string, data: OpportunityCommentCreate) =>
+    api.post<OpportunityComment>(`/api/pipeline/opportunities/${opportunityId}/comments`, data),
 };

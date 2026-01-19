@@ -6,12 +6,14 @@ import type {
   RequisitionCreate,
   RequisitionUpdate,
   RequisitionRoleCreate,
+  RequisitionStats,
   NewHire,
   NewHireCreate,
   OnboardingTemplate,
   OnboardingTemplateCreate,
 } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
+import { ChecklistModal } from '../components/people/ChecklistModal';
 
 type TabType = 'requisitions' | 'onboarding' | 'templates';
 
@@ -19,6 +21,7 @@ export function People() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('onboarding');
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
+  const [requisitionStats, setRequisitionStats] = useState<RequisitionStats | null>(null);
   const [newHires, setNewHires] = useState<NewHire[]>([]);
   const [templates, setTemplates] = useState<OnboardingTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,6 +31,8 @@ export function People() {
   const [selectedRequisition, setSelectedRequisition] = useState<Requisition | null>(null);
   const [showCreateHireModal, setShowCreateHireModal] = useState(false);
   const [showCreateTemplateModal, setShowCreateTemplateModal] = useState(false);
+  const [showChecklistModal, setShowChecklistModal] = useState(false);
+  const [selectedHire, setSelectedHire] = useState<NewHire | null>(null);
 
   useEffect(() => {
     loadData();
@@ -37,8 +42,18 @@ export function People() {
     try {
       setLoading(true);
       if (activeTab === 'requisitions') {
-        const response = await peopleApi.getRequisitions();
-        setRequisitions(response.data);
+        const reqResponse = await peopleApi.getRequisitions();
+        setRequisitions(reqResponse.data);
+
+        // Load stats separately with error handling
+        try {
+          const statsResponse = await peopleApi.getRequisitionStats();
+          setRequisitionStats(statsResponse.data);
+          console.log('Requisition stats loaded:', statsResponse.data);
+        } catch (statsError) {
+          console.error('Failed to load requisition stats:', statsError);
+          // Continue even if stats fail
+        }
       } else if (activeTab === 'onboarding') {
         const response = await peopleApi.getNewHires();
         setNewHires(response.data);
@@ -118,6 +133,11 @@ export function People() {
       console.error('Failed to delete onboarding entry:', error);
       alert('Failed to delete onboarding entry. Please try again.');
     }
+  };
+
+  const handleManageChecklist = (hire: NewHire) => {
+    setSelectedHire(hire);
+    setShowChecklistModal(true);
   };
 
   const handleCreateTemplate = async (data: OnboardingTemplateCreate, tasks: { task_title: string; day_offset: number }[]) => {
@@ -200,6 +220,7 @@ export function People() {
           {activeTab === 'requisitions' && (
             <RequisitionsTab
               requisitions={requisitions}
+              stats={requisitionStats}
               onEdit={handleEditRequisition}
               onDelete={handleDeleteRequisition}
               onManageRoles={handleManageRoles}
@@ -210,6 +231,7 @@ export function People() {
             <OnboardingTab
               newHires={newHires}
               onDelete={handleDeleteNewHire}
+              onManageChecklist={handleManageChecklist}
               canEdit={isDirectorOrAdmin}
             />
           )}
@@ -259,6 +281,17 @@ export function People() {
           onSubmit={handleCreateTemplate}
         />
       )}
+      {showChecklistModal && selectedHire && (
+        <ChecklistModal
+          isOpen={showChecklistModal}
+          onClose={() => {
+            setShowChecklistModal(false);
+            setSelectedHire(null);
+          }}
+          hireId={selectedHire.id}
+          hireName={selectedHire.name}
+        />
+      )}
     </div>
   );
 }
@@ -266,12 +299,14 @@ export function People() {
 // Requisitions Tab
 function RequisitionsTab({
   requisitions,
+  stats,
   onEdit,
   onDelete,
   onManageRoles,
   canEdit,
 }: {
   requisitions: Requisition[];
+  stats: RequisitionStats | null;
   onEdit: (req: Requisition) => void;
   onDelete: (req: Requisition) => void;
   onManageRoles: (req: Requisition) => void;
@@ -316,8 +351,45 @@ function RequisitionsTab({
     return { totalRequested, totalFilled, totalRemaining };
   };
 
+  console.log('RequisitionsTab rendering with stats:', stats);
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Stats Summary */}
+      {stats ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="text-sm text-gray-500 mb-1">Total</div>
+            <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+          </div>
+          <div className="bg-white rounded-lg border border-green-200 p-4">
+            <div className="text-sm text-green-600 mb-1">Open</div>
+            <div className="text-2xl font-bold text-green-700">{stats.open}</div>
+          </div>
+          <div className="bg-white rounded-lg border border-blue-200 p-4">
+            <div className="text-sm text-blue-600 mb-1">Interviewing</div>
+            <div className="text-2xl font-bold text-blue-700">{stats.interviewing}</div>
+          </div>
+          <div className="bg-white rounded-lg border border-purple-200 p-4">
+            <div className="text-sm text-purple-600 mb-1">Offer Made</div>
+            <div className="text-2xl font-bold text-purple-700">{stats.offer_made}</div>
+          </div>
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="text-sm text-gray-600 mb-1">Filled</div>
+            <div className="text-2xl font-bold text-gray-700">{stats.filled}</div>
+          </div>
+          <div className="bg-white rounded-lg border border-red-200 p-4">
+            <div className="text-sm text-red-600 mb-1">Cancelled</div>
+            <div className="text-2xl font-bold text-red-700">{stats.cancelled}</div>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800">
+          Stats not loaded (check console for details)
+        </div>
+      )}
+
+      {/* Requisitions List */}
       {requisitions.map((req) => {
         const { totalRequested, totalFilled, totalRemaining } = getTotals(req);
         const hasRoles = req.roles && req.roles.length > 0;
@@ -474,10 +546,12 @@ function RequisitionsTab({
 function OnboardingTab({
   newHires,
   onDelete,
+  onManageChecklist,
   canEdit,
 }: {
   newHires: NewHire[];
   onDelete: (hire: NewHire) => void;
+  onManageChecklist: (hire: NewHire) => void;
   canEdit: boolean;
 }) {
   const getStatusColor = (status: string) => {
@@ -519,6 +593,17 @@ function OnboardingTab({
                   </div>
                 </div>
               )}
+
+              {/* Manage Checklist Button */}
+              <div className="mt-4">
+                <button
+                  onClick={() => onManageChecklist(hire)}
+                  className="inline-flex items-center gap-2 px-3 py-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                >
+                  <ClipboardList className="w-4 h-4" />
+                  Manage Checklist
+                </button>
+              </div>
             </div>
 
             {/* Delete Button */}

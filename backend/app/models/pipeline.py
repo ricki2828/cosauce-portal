@@ -37,6 +37,25 @@ class PipelineOpportunity(PipelineOpportunityBase):
     created_at: datetime
     updated_at: datetime
 
+class OpportunityCommentCreate(BaseModel):
+    """Create a new comment on an opportunity"""
+    content: str
+
+class OpportunityComment(BaseModel):
+    """Comment on an opportunity"""
+    id: str
+    opportunity_id: str
+    author_id: Optional[str] = None
+    author_name: str
+    content: str
+    created_at: datetime
+
+class OpportunityCommentLatest(BaseModel):
+    """Latest comment on an opportunity (for list view)"""
+    content: str
+    author_name: str
+    created_at: datetime
+
 class PipelineStats(BaseModel):
     total: int
     new: int

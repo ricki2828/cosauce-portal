@@ -8,3 +8,4 @@ export { RequisitionsSummaryCard } from './RequisitionsSummaryCard';
 export { NewHireMiniCard } from './NewHireMiniCard';
 export { SalesPipelineCard } from './SalesPipelineCard';
 export { SalesPipelineKanban } from './SalesPipelineKanban';
+export { default as AddCommentModal } from './AddCommentModal';

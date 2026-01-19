@@ -1,12 +1,17 @@
+import { useState } from 'react';
 import type { Priority } from '../../lib/priorities-types';
-import { MessageSquare, Calendar, User } from 'lucide-react';
+import { MessageSquare, Calendar, User, MessageSquarePlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { prioritiesApi } from '../../lib/api';
+import AddCommentModal from './AddCommentModal';
 
 interface PriorityCardProps {
   priority: Priority;
+  onCommentAdded?: () => void;
 }
 
-export function PriorityCard({ priority }: PriorityCardProps) {
+export function PriorityCard({ priority, onCommentAdded }: PriorityCardProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const statusColors = {
     active: 'bg-blue-100 text-blue-700',
     completed: 'bg-green-100 text-green-700',
@@ -29,7 +34,21 @@ export function PriorityCard({ priority }: PriorityCardProps) {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
+  const handleAddComment = async (content: string) => {
+    await prioritiesApi.addUpdate(priority.id, { content });
+    if (onCommentAdded) {
+      onCommentAdded();
+    }
+  };
+
+  const handleCommentClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsModalOpen(true);
+  };
+
   return (
+    <>
     <Link
       to="/priorities"
       className="block bg-white rounded-lg border border-gray-200 p-3 hover:border-gray-300 hover:shadow-sm transition-all"
@@ -67,6 +86,27 @@ export function PriorityCard({ priority }: PriorityCardProps) {
           No updates yet
         </div>
       )}
+
+      {/* Add Comment Button */}
+      <div className="mt-3 pt-3 border-t border-gray-100">
+        <button
+          onClick={handleCommentClick}
+          className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:underline"
+        >
+          <MessageSquarePlus className="w-3.5 h-3.5" />
+          Add update
+        </button>
+      </div>
     </Link>
+
+    {/* Add Comment Modal */}
+    <AddCommentModal
+      isOpen={isModalOpen}
+      onClose={() => setIsModalOpen(false)}
+      onSubmit={handleAddComment}
+      title={`Add Update: ${priority.title}`}
+      placeholder="Enter update details..."
+    />
+    </>
   );
 }

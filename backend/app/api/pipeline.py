@@ -14,7 +14,9 @@ from ..models.pipeline import (
     PipelineOpportunityCreate,
     PipelineOpportunityUpdate,
     PipelineOpportunity,
-    PipelineStats
+    PipelineStats,
+    OpportunityCommentCreate,
+    OpportunityComment
 )
 
 router = APIRouter()
@@ -196,3 +198,48 @@ async def delete_opportunity(
         await db.commit()
 
     return None
+
+@router.post("/opportunities/{opportunity_id}/comments", response_model=OpportunityComment, status_code=status.HTTP_201_CREATED)
+async def add_opportunity_comment(
+    opportunity_id: str,
+    comment: OpportunityCommentCreate,
+    current_user = Depends(get_current_user)
+):
+    """Add a comment to an opportunity"""
+    async with aiosqlite.connect(DATA_DIR / "portal.db") as db:
+        # Check if opportunity exists
+        async with db.execute("SELECT id FROM pipeline_opportunities WHERE id = ?", (opportunity_id,)) as cursor:
+            existing = await cursor.fetchone()
+
+        if not existing:
+            raise HTTPException(status_code=404, detail="Opportunity not found")
+
+        comment_id = str(uuid.uuid4())
+        now = datetime.utcnow().isoformat()
+
+        # Get author name
+        async with db.execute("SELECT name FROM users WHERE id = ?", (current_user['id'],)) as cursor:
+            user_row = await cursor.fetchone()
+            author_name = user_row[0] if user_row else "Unknown"
+
+        # Insert comment
+        await db.execute("""
+            INSERT INTO opportunity_comments (id, opportunity_id, author_id, author_name, content, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (comment_id, opportunity_id, current_user['id'], author_name, comment.content, now))
+
+        # Update opportunity's updated_at timestamp
+        await db.execute("""
+            UPDATE pipeline_opportunities SET updated_at = ? WHERE id = ?
+        """, (now, opportunity_id))
+
+        await db.commit()
+
+        return OpportunityComment(
+            id=comment_id,
+            opportunity_id=opportunity_id,
+            author_id=current_user['id'],
+            author_name=author_name,
+            content=comment.content,
+            created_at=now
+        )

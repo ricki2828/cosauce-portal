@@ -1,12 +1,17 @@
+import { useState } from 'react';
 import type { Requisition } from '../../lib/api';
-import { Users, MapPin, Calendar } from 'lucide-react';
+import { Users, MapPin, Calendar, MessageSquarePlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { peopleApi } from '../../lib/api';
+import AddCommentModal from './AddCommentModal';
 
 interface RequisitionMiniCardProps {
   requisition: Requisition;
+  onCommentAdded?: () => void;
 }
 
-export function RequisitionMiniCard({ requisition }: RequisitionMiniCardProps) {
+export function RequisitionMiniCard({ requisition, onCommentAdded }: RequisitionMiniCardProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const statusColors = {
     open: 'bg-green-100 text-green-800',
     interviewing: 'bg-blue-100 text-blue-800',
@@ -20,7 +25,21 @@ export function RequisitionMiniCard({ requisition }: RequisitionMiniCardProps) {
   const totalRequested = roles.reduce((sum, role) => sum + role.requested_count, 0);
   const totalFilled = roles.reduce((sum, role) => sum + role.filled_count, 0);
 
+  const handleAddComment = async (content: string) => {
+    await peopleApi.addRequisitionComment(requisition.id, { content });
+    if (onCommentAdded) {
+      onCommentAdded();
+    }
+  };
+
+  const handleCommentClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsModalOpen(true);
+  };
+
   return (
+    <>
     <Link
       to="/people"
       className="block bg-white rounded-lg border border-gray-200 p-3 hover:border-gray-300 hover:shadow-sm transition-all"
@@ -106,6 +125,27 @@ export function RequisitionMiniCard({ requisition }: RequisitionMiniCardProps) {
           </p>
         </div>
       )}
+
+      {/* Add Comment Button */}
+      <div className={`${requisition.latest_comment ? 'mt-2' : 'mt-3'} pt-3 border-t border-gray-100`}>
+        <button
+          onClick={handleCommentClick}
+          className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:underline"
+        >
+          <MessageSquarePlus className="w-3.5 h-3.5" />
+          Add comment
+        </button>
+      </div>
     </Link>
+
+    {/* Add Comment Modal */}
+    <AddCommentModal
+      isOpen={isModalOpen}
+      onClose={() => setIsModalOpen(false)}
+      onSubmit={handleAddComment}
+      title={`Add Comment: ${requisition.title}`}
+      placeholder="Enter comment about this requisition..."
+    />
+    </>
   );
 }
