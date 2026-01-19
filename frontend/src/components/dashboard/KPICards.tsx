@@ -50,7 +50,7 @@ export function KPICards() {
       setLoading(true);
 
       // Call external Performance Portal API
-      const performancePortalUrl = import.meta.env.VITE_PERFORMANCE_PORTAL_API_URL || 'http://localhost:8005';
+      const performancePortalUrl = import.meta.env.VITE_PERFORMANCE_PORTAL_API_URL || 'https://performance-api.taiaroa.xyz';
       const apiKey = import.meta.env.VITE_PERFORMANCE_PORTAL_API_KEY || 'dev-external-api-key-change-in-production';
 
       const response = await axios.get(
