@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Flag, BarChart3, Users, TrendingUp, Plus } from 'lucide-react';
-import { prioritiesApi, businessUpdatesApi, peopleApi, pipelineApi } from '../lib/api';
+import { prioritiesApi, peopleApi, pipelineApi } from '../lib/api';
 import type { Requisition, NewHire, PipelineOpportunity, PipelineOpportunityCreate, PipelineOpportunityUpdate } from '../lib/api';
 import type { Priority } from '../lib/priorities-types';
-import type { DashboardData, ShiftUpdate } from '../lib/business-updates-types';
 import {
   DashboardSection,
   PriorityCard,
-  PerformanceCard,
+  KPICards,
   RequisitionMiniCard,
   NewHireMiniCard,
   SalesPipelineKanban
@@ -20,10 +19,8 @@ export function Dashboard() {
   const [prioritiesLoading, setPrioritiesLoading] = useState(true);
   const [prioritiesError, setPrioritiesError] = useState<string | null>(null);
 
-  // Performance state
-  const [performance, setPerformance] = useState<DashboardData | null>(null);
-  const [performanceLoading, setPerformanceLoading] = useState(true);
-  const [performanceError, setPerformanceError] = useState<string | null>(null);
+  // Performance state - now handled by KPICards component
+  // Removed: performance data is fetched directly by KPICards from Performance Portal
 
   // People state
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
@@ -43,8 +40,8 @@ export function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedOpportunity, setSelectedOpportunity] = useState<PipelineOpportunity | undefined>(undefined);
 
-  // Shift update state (for recent commentary)
-  const [recentCommentary, setRecentCommentary] = useState<ShiftUpdate | null>(null);
+  // Shift update state - no longer needed with KPICards
+  // Removed: commentary functionality replaced by KPICards component
 
   // Load priorities
   const loadPriorities = async () => {
@@ -65,20 +62,8 @@ export function Dashboard() {
     }
   };
 
-  // Load performance data
-  const loadPerformance = async () => {
-    try {
-      setPerformanceLoading(true);
-      setPerformanceError(null);
-      const response = await businessUpdatesApi.getDashboard();
-      setPerformance(response.data);
-    } catch (err: any) {
-      console.error('Failed to load performance:', err);
-      setPerformanceError(err.response?.data?.detail || 'Failed to load performance data');
-    } finally {
-      setPerformanceLoading(false);
-    }
-  };
+  // Load performance data - REMOVED
+  // Performance data now fetched directly by KPICards component from Performance Portal
 
   // Load requisitions
   const loadRequisitions = async () => {
@@ -154,30 +139,14 @@ export function Dashboard() {
     }
   };
 
-  // Load recent shift update for commentary
-  const loadRecentCommentary = async () => {
-    try {
-      const response = await businessUpdatesApi.getShiftUpdates({ });
-      // Get the most recent shift update with commentary
-      const updates = response.data;
-      if (updates && updates.length > 0) {
-        // Find most recent update with non-empty commentary
-        const withCommentary = updates.find((u: ShiftUpdate) => u.commentary && u.commentary.trim().length > 0);
-        setRecentCommentary(withCommentary || updates[0]);
-      }
-    } catch (err: any) {
-      console.error('Failed to load shift updates:', err);
-      // Don't set error state, just silently fail for commentary
-    }
-  };
+  // Load recent shift update for commentary - REMOVED
+  // This functionality is no longer needed with KPICards component
 
   useEffect(() => {
     loadPriorities();
-    loadPerformance();
     loadRequisitions();
     loadNewHires();
     loadOpportunities();
-    loadRecentCommentary();
   }, []);
 
   return (
@@ -209,15 +178,13 @@ export function Dashboard() {
       <DashboardSection
         title="Performance"
         icon={BarChart3}
-        loading={performanceLoading}
-        error={performanceError}
-        onRetry={loadPerformance}
-        isEmpty={!performance}
+        loading={false}
+        error={null}
+        onRetry={() => {}}
+        isEmpty={false}
         emptyMessage="No performance data available."
       >
-        {performance && (
-          <PerformanceCard dashboard={performance} recentCommentary={recentCommentary} />
-        )}
+        <KPICards />
       </DashboardSection>
 
       {/* Section 3: People */}
