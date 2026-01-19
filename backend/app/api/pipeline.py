@@ -28,18 +28,22 @@ async def list_opportunities(
     status: Optional[str] = None,
     current_user = Depends(get_current_user)
 ):
-    """List all pipeline opportunities"""
+    """List all pipeline opportunities with author names"""
     async with aiosqlite.connect(DATA_DIR / "portal.db") as db:
         db.row_factory = aiosqlite.Row
 
-        query = "SELECT * FROM pipeline_opportunities"
+        query = """
+            SELECT po.*, u.name as author_name
+            FROM pipeline_opportunities po
+            LEFT JOIN users u ON po.created_by = u.id
+        """
         params = []
 
         if status:
-            query += " WHERE status = ?"
+            query += " WHERE po.status = ?"
             params.append(status)
 
-        query += " ORDER BY created_at DESC"
+        query += " ORDER BY po.created_at DESC"
 
         async with db.execute(query, params) as cursor:
             rows = await cursor.fetchall()

@@ -94,6 +94,18 @@ export function RequisitionMiniCard({ requisition }: RequisitionMiniCardProps) {
           <span>Needed: {new Date(requisition.target_start_date).toLocaleDateString()}</span>
         </div>
       )}
+
+      {/* Latest Comment */}
+      {requisition.latest_comment && (
+        <div className="mt-3 pt-3 border-t border-gray-200">
+          <p className="text-xs text-gray-700 line-clamp-2 mb-1">
+            {requisition.latest_comment.content}
+          </p>
+          <p className="text-xs text-gray-500">
+            — {requisition.latest_comment.author_name}
+          </p>
+        </div>
+      )}
     </Link>
   );
 }

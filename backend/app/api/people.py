@@ -51,8 +51,9 @@ async def list_requisitions(
             rows = await cursor.fetchall()
             requisitions = [dict(row) for row in rows]
 
-        # Fetch roles for each requisition
+        # Fetch roles and latest comment for each requisition
         for req in requisitions:
+            # Fetch roles
             async with db.execute("""
                 SELECT id, requisition_id, role_type, requested_count, filled_count,
                        created_at, updated_at
@@ -68,6 +69,24 @@ async def list_requisitions(
                     }
                     for role in roles
                 ]
+
+            # Fetch latest comment
+            async with db.execute("""
+                SELECT content, author_name, created_at
+                FROM requisition_comments
+                WHERE requisition_id = ?
+                ORDER BY created_at DESC
+                LIMIT 1
+            """, (req['id'],)) as cursor:
+                comment_row = await cursor.fetchone()
+                if comment_row:
+                    req['latest_comment'] = {
+                        'content': comment_row['content'],
+                        'author_name': comment_row['author_name'],
+                        'created_at': comment_row['created_at']
+                    }
+                else:
+                    req['latest_comment'] = None
 
         return requisitions
 

@@ -102,6 +102,20 @@ export function SalesPipelineKanban({ opportunities, onEditOpportunity }: SalesP
                       </span>
                     </div>
                   </div>
+
+                  {/* Notes/Commentary */}
+                  {opportunity.notes && (
+                    <div className="mt-2 pt-2 border-t border-gray-200">
+                      <p className="text-xs text-gray-700 line-clamp-2 mb-1">
+                        {opportunity.notes}
+                      </p>
+                      {opportunity.author_name && (
+                        <p className="text-xs text-gray-500">
+                          — {opportunity.author_name}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </button>
               ))}
 

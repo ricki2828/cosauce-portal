@@ -34,3 +34,4 @@ backend/data/
 *.egg-info/
 .eggs/
 .vercel
+.env*.local

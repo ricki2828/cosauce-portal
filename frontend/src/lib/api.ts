@@ -493,13 +493,19 @@ export interface RequisitionRoleUpdate {
   filled_count?: number;
 }
 
+export interface RequisitionComment {
+  content: string;
+  author_name: string;
+  created_at: string;
+}
+
 export interface Requisition {
   id: string;
   title: string;
   department: string;
   location: string | null;
   employment_type: 'full_time' | 'part_time' | 'contract' | 'intern';
-  status: 'open' | 'interviewing' | 'offer_made' | 'filled' | 'cancelled';
+  status: 'open' | 'interviewing' | 'offer_made' | 'filled' | 'cancelled' | 'pending';
   headcount: number;
   priority: 'low' | 'medium' | 'high' | 'urgent' | null;
   description: string | null;
@@ -511,6 +517,7 @@ export interface Requisition {
   created_at: string;  // Date requested
   updated_at: string;
   roles: RequisitionRole[];  // Role lines with remaining counts
+  latest_comment: RequisitionComment | null;  // Latest comment with author
 }
 
 export interface RequisitionCreate {
@@ -917,6 +924,7 @@ export interface PipelineOpportunity {
   target_date: string | null;
   notes: string | null;
   created_by: string;
+  author_name: string | null;  // Author name from users table join
   created_at: string;
   updated_at: string;
 }
