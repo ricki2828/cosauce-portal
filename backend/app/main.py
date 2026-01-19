@@ -37,7 +37,40 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
+
+# Add middleware to prevent caching of API responses
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class NoCacheMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
+
+app.add_middleware(NoCacheMiddleware)
+
+# CORS exception handler to ensure CORS headers on error responses
+from starlette.responses import JSONResponse
+from starlette.requests import Request
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Add CORS headers to HTTPException responses"""
+    origin = request.headers.get("origin")
+    headers = {}
+    if origin in CORS_ORIGINS:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers=headers,
+    )
 
 # Include routers
 app.include_router(auth.router, prefix="/api")  # Auth routes already have /auth prefix
