@@ -94,19 +94,20 @@ async def list_requisitions(
 async def get_requisition_stats(
     current_user = Depends(get_current_user)
 ):
-    """Get requisition statistics"""
+    """Get requisition statistics - counts positions/roles, not requisition records"""
     async with aiosqlite.connect(DATA_DIR / "portal.db") as db:
         db.row_factory = aiosqlite.Row
 
         async with db.execute("""
             SELECT
-                COUNT(*) as total,
-                SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END) as open,
-                SUM(CASE WHEN status = 'interviewing' THEN 1 ELSE 0 END) as interviewing,
-                SUM(CASE WHEN status = 'offer_made' THEN 1 ELSE 0 END) as offer_made,
-                SUM(CASE WHEN status = 'filled' THEN 1 ELSE 0 END) as filled,
-                SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled
-            FROM requisitions
+                SUM(rr.requested_count) as total,
+                SUM(CASE WHEN r.status = 'open' THEN (rr.requested_count - rr.filled_count) ELSE 0 END) as open,
+                SUM(CASE WHEN r.status = 'interviewing' THEN (rr.requested_count - rr.filled_count) ELSE 0 END) as interviewing,
+                SUM(CASE WHEN r.status = 'offer_made' THEN (rr.requested_count - rr.filled_count) ELSE 0 END) as offer_made,
+                SUM(rr.filled_count) as filled,
+                SUM(CASE WHEN r.status = 'cancelled' THEN rr.requested_count ELSE 0 END) as cancelled
+            FROM requisitions r
+            LEFT JOIN requisition_roles rr ON r.id = rr.requisition_id
         """) as cursor:
             row = await cursor.fetchone()
             return dict(row)
