@@ -82,9 +82,16 @@ class Requisition(RequisitionBase):
     created_at: datetime  # This is the "date requested"
     updated_at: datetime
 
+class RequisitionComment(BaseModel):
+    """Latest comment on a requisition"""
+    content: str
+    author_name: str
+    created_at: datetime
+
 class RequisitionWithRoles(Requisition):
     """Requisition with all role lines included"""
     roles: list[RequisitionRoleResponse] = []
+    latest_comment: Optional[RequisitionComment] = None
 
     @property
     def total_requested(self) -> int:

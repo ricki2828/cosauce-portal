@@ -33,6 +33,7 @@ class PipelineOpportunity(PipelineOpportunityBase):
     id: str
     status: Literal['new', 'meeting', 'assessing', 'implementation', 'blocked']
     created_by: str
+    author_name: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
