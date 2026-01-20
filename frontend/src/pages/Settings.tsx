@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { User, Bell, Shield, Brain, Save, RefreshCw, Users } from 'lucide-react';
+import { User, Bell, Shield, Brain, Save, RefreshCw, Users, Settings as SettingsIcon } from 'lucide-react';
 import { salesApi } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { UsersManager } from '../components/settings/UsersManager';
+
+type SettingsTabType = 'general' | 'users';
 
 const DEFAULT_BPO_PROMPT = `Analyze this company for BPO/outsourcing fit using all available information. Consider:
 
@@ -30,10 +32,17 @@ Provide brief reasoning explaining your assessment.`;
 
 export function Settings() {
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<SettingsTabType>('general');
   const [bpoPrompt, setBpoPrompt] = useState('');
   const [bpoLoading, setBpoLoading] = useState(false);
   const [bpoSaving, setBpoSaving] = useState(false);
   const [bpoSaved, setBpoSaved] = useState(false);
+
+  // Define tabs based on user role
+  const tabs = [
+    { id: 'general' as SettingsTabType, label: 'General', icon: SettingsIcon },
+    ...(user?.role === 'admin' ? [{ id: 'users' as SettingsTabType, label: 'Users', icon: Users }] : []),
+  ];
 
   // Load BPO prompt on mount
   useEffect(() => {
@@ -74,24 +83,36 @@ export function Settings() {
 
   return (
     <div>
+      {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-        <p className="mt-1 text-gray-600">Manage your account and preferences</p>
+        <p className="mt-1 text-gray-600">Manage your account and application settings</p>
       </div>
 
-      {/* User Management - Admin Only */}
-      {user?.role === 'admin' && (
-        <div className="mb-8">
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="flex items-center mb-4">
-              <Users className="w-5 h-5 text-blue-600 mr-2" />
-              <h2 className="text-lg font-medium text-gray-900">User Management</h2>
-            </div>
-            <UsersManager />
-          </div>
-        </div>
-      )}
+      {/* Tabs */}
+      <div className="mb-6 border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          {tabs.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={`
+                flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm
+                ${activeTab === id
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }
+              `}
+            >
+              <Icon className="w-4 h-4" />
+              {label}
+            </button>
+          ))}
+        </nav>
+      </div>
 
+      {/* Tab Content */}
+      {activeTab === 'general' && (
       <div className="max-w-2xl space-y-6">
         {/* BPO Analysis Prompt */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -207,6 +228,10 @@ export function Settings() {
           </div>
         </div>
       </div>
+      )}
+
+      {/* Users Tab */}
+      {activeTab === 'users' && <UsersManager />}
     </div>
   );
 }
