@@ -1010,3 +1010,47 @@ export const pipelineApi = {
   addOpportunityComment: (opportunityId: string, data: OpportunityCommentCreate) =>
     api.post<OpportunityComment>(`/api/pipeline/opportunities/${opportunityId}/comments`, data),
 };
+
+// ==================== USER MANAGEMENT TYPES ====================
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: 'admin' | 'director' | 'viewer' | 'team_leader';
+  is_active: number;
+  created_at: string;
+  last_login: string | null;
+}
+
+export interface CreateUserData {
+  email: string;
+  name: string;
+  password: string;
+  role: string;
+}
+
+export interface UpdateUserData {
+  name?: string;
+  role?: string;
+  is_active?: number;
+}
+
+// ==================== USER MANAGEMENT API ====================
+
+export const usersApi = {
+  getUsers: () =>
+    api.get<User[]>('/api/users'),
+
+  createUser: (data: CreateUserData) =>
+    api.post<User>('/api/users', data),
+
+  updateUser: (id: string, data: UpdateUserData) =>
+    api.put<User>(`/api/users/${id}`, data),
+
+  deleteUser: (id: string) =>
+    api.delete(`/api/users/${id}`),
+
+  resetUserPassword: (id: string, newPassword: string) =>
+    api.post(`/api/users/${id}/reset-password`, { new_password: newPassword }),
+};

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { User, Bell, Shield, Brain, Save, RefreshCw } from 'lucide-react';
+import { User, Bell, Shield, Brain, Save, RefreshCw, Users } from 'lucide-react';
 import { salesApi } from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
+import { UsersManager } from '../components/settings/UsersManager';
 
 const DEFAULT_BPO_PROMPT = `Analyze this company for BPO/outsourcing fit using all available information. Consider:
 
@@ -27,6 +29,7 @@ List the key signals you detected.
 Provide brief reasoning explaining your assessment.`;
 
 export function Settings() {
+  const { user } = useAuth();
   const [bpoPrompt, setBpoPrompt] = useState('');
   const [bpoLoading, setBpoLoading] = useState(false);
   const [bpoSaving, setBpoSaving] = useState(false);
@@ -75,6 +78,19 @@ export function Settings() {
         <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
         <p className="mt-1 text-gray-600">Manage your account and preferences</p>
       </div>
+
+      {/* User Management - Admin Only */}
+      {user?.role === 'admin' && (
+        <div className="mb-8">
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center mb-4">
+              <Users className="w-5 h-5 text-blue-600 mr-2" />
+              <h2 className="text-lg font-medium text-gray-900">User Management</h2>
+            </div>
+            <UsersManager />
+          </div>
+        </div>
+      )}
 
       <div className="max-w-2xl space-y-6">
         {/* BPO Analysis Prompt */}
