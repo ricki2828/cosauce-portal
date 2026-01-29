@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { talentApi } from '../lib/api';
 import type { OrgNode, Employee } from '../lib/talent-types';
 import { Plus, Loader2 } from 'lucide-react';
 import { OrgChart, EmployeeModal, FilterBar, GroupLegend } from '../components/talent';
 
 export function Talent() {
-  const [orgTree, setOrgTree] = useState<OrgNode[]>([]);
   const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,28 +15,25 @@ export function Talent() {
 
   // Filter state
   const [statusFilter, setStatusFilter] = useState<string>('active');
-  const [departmentFilter, setDepartmentFilter] = useState<string>('');
+  const [roleFilters, setRoleFilters] = useState<string[]>([]);
+  const [departmentFilters, setDepartmentFilters] = useState<string[]>([]);
+  const [clientFilters, setClientFilters] = useState<string[]>([]);
 
   // Load data
   useEffect(() => {
     loadData();
-  }, [statusFilter, departmentFilter]);
+  }, [statusFilter]);
 
   const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Load org tree and flat employee list
-      const [treeResponse, employeesResponse] = await Promise.all([
-        talentApi.getOrgTree({ status: statusFilter, department: departmentFilter }),
-        talentApi.getEmployees({
-          status: statusFilter,
-          department: departmentFilter || undefined
-        })
-      ]);
+      // Load employees with status filter only (we'll filter client-side for the rest)
+      const employeesResponse = await talentApi.getEmployees({
+        status: statusFilter
+      });
 
-      setOrgTree(treeResponse.data);
       setAllEmployees(employeesResponse.data);
     } catch (err: any) {
       console.error('Failed to load talent data:', err);
@@ -46,6 +42,41 @@ export function Talent() {
       setLoading(false);
     }
   };
+
+  // Helper function to build org tree from flat employee list
+  const buildOrgTree = (employees: Employee[], parentId: string | null = null): OrgNode[] => {
+    const roots = employees.filter(emp => emp.manager_id === parentId);
+    return roots.map(emp => ({
+      ...emp,
+      reports: buildOrgTree(employees, emp.id)
+    }));
+  };
+
+  // Filter employees and build org tree client-side
+  const { filteredEmployees, orgTree } = useMemo(() => {
+    // Apply client-side filters
+    let filtered = allEmployees;
+
+    if (roleFilters.length > 0) {
+      filtered = filtered.filter(emp => roleFilters.includes(emp.role));
+    }
+
+    if (departmentFilters.length > 0) {
+      filtered = filtered.filter(emp => emp.department && departmentFilters.includes(emp.department));
+    }
+
+    if (clientFilters.length > 0) {
+      filtered = filtered.filter(emp => emp.account_id && clientFilters.includes(emp.account_id));
+    }
+
+    // Build org tree from filtered employees
+    const tree = buildOrgTree(filtered);
+
+    return {
+      filteredEmployees: filtered,
+      orgTree: tree
+    };
+  }, [allEmployees, roleFilters, departmentFilters, clientFilters]);
 
   // CRUD handlers
   const handleCreate = async (data: any) => {
@@ -140,7 +171,7 @@ export function Talent() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Talent Org Chart</h1>
           <p className="text-sm text-gray-500 mt-1">
-            {allEmployees.length} {statusFilter || 'total'} employee{allEmployees.length !== 1 ? 's' : ''}
+            {filteredEmployees.length} of {allEmployees.length} {statusFilter || 'total'} employee{allEmployees.length !== 1 ? 's' : ''}
           </p>
         </div>
 
@@ -157,14 +188,19 @@ export function Talent() {
 
       {/* Filter Bar */}
       <FilterBar
+        allEmployees={allEmployees}
         statusFilter={statusFilter}
-        departmentFilter={departmentFilter}
+        roleFilters={roleFilters}
+        departmentFilters={departmentFilters}
+        clientFilters={clientFilters}
         onStatusChange={setStatusFilter}
-        onDepartmentChange={setDepartmentFilter}
+        onRoleFiltersChange={setRoleFilters}
+        onDepartmentFiltersChange={setDepartmentFilters}
+        onClientFiltersChange={setClientFilters}
       />
 
       {/* Group Legend */}
-      <GroupLegend employees={allEmployees} />
+      <GroupLegend employees={filteredEmployees} />
 
       {/* Org Chart */}
       <div className="flex-1 overflow-hidden">
