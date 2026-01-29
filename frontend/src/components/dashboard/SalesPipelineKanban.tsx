@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import type { PipelineOpportunity } from '../../lib/api';
-import { Building2, TrendingUp, Calendar, Target, MessageSquarePlus } from 'lucide-react';
+import type { PipelineOpportunity, OpportunityComment } from '../../lib/api';
+import { Building2, TrendingUp, Calendar, Target, MessageSquarePlus, Pencil, Trash2 } from 'lucide-react';
 import { pipelineApi } from '../../lib/api';
 import AddCommentModal from './AddCommentModal';
 
@@ -27,6 +27,8 @@ const columns: KanbanColumn[] = [
 export function SalesPipelineKanban({ opportunities, onEditOpportunity, onCommentAdded }: SalesPipelineKanbanProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedOpportunity, setSelectedOpportunity] = useState<PipelineOpportunity | null>(null);
+  const [editingComment, setEditingComment] = useState<OpportunityComment | null>(null);
+  const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
 
   const getOpportunitiesByStatus = (status: string) => {
     return opportunities.filter(opp => opp.status === status);
@@ -40,9 +42,36 @@ export function SalesPipelineKanban({ opportunities, onEditOpportunity, onCommen
     }
   };
 
+  const handleEditComment = async (content: string) => {
+    if (!selectedOpportunity || !editingComment) return;
+    await pipelineApi.updateOpportunityComment(selectedOpportunity.id, editingComment.id, { content });
+    if (onCommentAdded) {
+      onCommentAdded();
+    }
+  };
+
+  const handleDeleteComment = async (e: React.MouseEvent, opportunity: PipelineOpportunity, comment: OpportunityComment) => {
+    e.stopPropagation();
+    if (!confirm('Delete this note?')) return;
+    await pipelineApi.deleteOpportunityComment(opportunity.id, comment.id);
+    if (onCommentAdded) {
+      onCommentAdded();
+    }
+  };
+
   const handleCommentClick = (e: React.MouseEvent, opportunity: PipelineOpportunity) => {
     e.stopPropagation();
     setSelectedOpportunity(opportunity);
+    setEditingComment(null);
+    setModalMode('add');
+    setIsModalOpen(true);
+  };
+
+  const handleEditClick = (e: React.MouseEvent, opportunity: PipelineOpportunity, comment: OpportunityComment) => {
+    e.stopPropagation();
+    setSelectedOpportunity(opportunity);
+    setEditingComment(comment);
+    setModalMode('edit');
     setIsModalOpen(true);
   };
 
@@ -124,8 +153,40 @@ export function SalesPipelineKanban({ opportunities, onEditOpportunity, onCommen
                     </div>
                   </div>
 
-                  {/* Notes/Commentary */}
-                  {opportunity.notes && (
+                  {/* Notes/Commentary - show latest comment first */}
+                  {(opportunity.comments && opportunity.comments.length > 0) ? (
+                    <div className="mt-2 pt-2 border-t border-gray-200 space-y-1.5">
+                      {[...opportunity.comments].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 2).map((comment) => (
+                        <div key={comment.id} className="text-xs bg-blue-50 rounded p-1.5 group/comment">
+                          <div className="flex justify-between items-start gap-1">
+                            <p className="text-gray-700 line-clamp-2 flex-1">{comment.content}</p>
+                            <div className="flex gap-0.5 opacity-0 group-hover/comment:opacity-100 transition-opacity">
+                              <button
+                                onClick={(e) => handleEditClick(e, opportunity, comment)}
+                                className="p-0.5 text-gray-400 hover:text-blue-600"
+                                title="Edit"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={(e) => handleDeleteComment(e, opportunity, comment)}
+                                className="p-0.5 text-gray-400 hover:text-red-600"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                          <p className="text-gray-500 text-[10px] mt-0.5">
+                            — {comment.author_name}, {new Date(comment.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </p>
+                        </div>
+                      ))}
+                      {opportunity.comments.length > 2 && (
+                        <p className="text-xs text-gray-400">+{opportunity.comments.length - 2} more notes</p>
+                      )}
+                    </div>
+                  ) : opportunity.notes ? (
                     <div className="mt-2 pt-2 border-t border-gray-200">
                       <p className="text-xs text-gray-700 line-clamp-2 mb-1">
                         {opportunity.notes}
@@ -136,7 +197,7 @@ export function SalesPipelineKanban({ opportunities, onEditOpportunity, onCommen
                         </p>
                       )}
                     </div>
-                  )}
+                  ) : null}
 
                   {/* Add Comment Button */}
                   <div className={`${opportunity.notes ? 'mt-2' : 'mt-2'} pt-2 border-t border-gray-100`}>
@@ -161,13 +222,18 @@ export function SalesPipelineKanban({ opportunities, onEditOpportunity, onCommen
         );
       })}
 
-      {/* Add Comment Modal */}
+      {/* Add/Edit Comment Modal */}
       <AddCommentModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSubmit={handleAddComment}
-        title={selectedOpportunity ? `Add Note: ${selectedOpportunity.client_name}` : 'Add Note'}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingComment(null);
+        }}
+        onSubmit={modalMode === 'edit' ? handleEditComment : handleAddComment}
+        title={selectedOpportunity ? `${modalMode === 'edit' ? 'Edit' : 'Add'} Note: ${selectedOpportunity.client_name}` : 'Add Note'}
         placeholder="Enter note about this opportunity..."
+        initialContent={editingComment?.content || ''}
+        mode={modalMode}
       />
     </div>
   );

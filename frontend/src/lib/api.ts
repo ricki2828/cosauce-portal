@@ -569,10 +569,10 @@ export interface NewHire {
   email: string | null;
   role: string;
   department: string | null;
-  start_date: string;
+  start_date: string | null;
   manager_id: string | null;
   onboarding_template_id: string | null;
-  status: 'pending' | 'active' | 'completed' | 'cancelled';
+  status: 'pending' | 'onboarding' | 'active' | 'completed' | 'cancelled';
   created_at: string;
   updated_at: string;
   tasks?: OnboardingTask[];
@@ -653,6 +653,7 @@ export interface RequisitionStats {
 export interface NewHireStats {
   total: number;
   pending: number;
+  onboarding: number;
   active: number;
   completed: number;
   cancelled: number;

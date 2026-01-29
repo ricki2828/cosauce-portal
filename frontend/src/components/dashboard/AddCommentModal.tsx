@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { MessageSquarePlus, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { MessageSquarePlus, Pencil, X } from 'lucide-react';
 
 interface AddCommentModalProps {
   isOpen: boolean;
@@ -7,6 +7,8 @@ interface AddCommentModalProps {
   onSubmit: (content: string) => Promise<void>;
   title: string;
   placeholder?: string;
+  initialContent?: string;
+  mode?: 'add' | 'edit';
 }
 
 const AddCommentModal: React.FC<AddCommentModalProps> = ({
@@ -14,11 +16,19 @@ const AddCommentModal: React.FC<AddCommentModalProps> = ({
   onClose,
   onSubmit,
   title,
-  placeholder = "Enter your comment..."
+  placeholder = "Enter your comment...",
+  initialContent = '',
+  mode = 'add'
 }) => {
-  const [content, setContent] = useState('');
+  const [content, setContent] = useState(initialContent);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setContent(initialContent);
+    }
+  }, [isOpen, initialContent]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +67,11 @@ const AddCommentModal: React.FC<AddCommentModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
-            <MessageSquarePlus className="w-5 h-5 text-blue-600" />
+            {mode === 'edit' ? (
+              <Pencil className="w-5 h-5 text-blue-600" />
+            ) : (
+              <MessageSquarePlus className="w-5 h-5 text-blue-600" />
+            )}
             <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
           </div>
           <button
@@ -102,7 +116,7 @@ const AddCommentModal: React.FC<AddCommentModalProps> = ({
               disabled={isSubmitting || !content.trim()}
               className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Adding...' : 'Add Comment'}
+              {isSubmitting ? (mode === 'edit' ? 'Saving...' : 'Adding...') : (mode === 'edit' ? 'Save' : 'Add Comment')}
             </button>
           </div>
         </form>

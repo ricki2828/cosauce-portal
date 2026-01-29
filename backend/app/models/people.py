@@ -198,11 +198,11 @@ class NewHireUpdate(BaseModel):
     department: Optional[str] = None
     start_date: Optional[date] = None
     manager_id: Optional[str] = None
-    status: Optional[Literal['pending', 'active', 'completed', 'cancelled']] = None
+    status: Optional[Literal['pending', 'onboarding', 'active', 'completed', 'cancelled']] = None
 
 class NewHire(NewHireBase):
     id: str
-    status: Literal['pending', 'active', 'completed', 'cancelled']  # Maps from team_members.status
+    status: Literal['pending', 'onboarding', 'active', 'completed', 'cancelled']  # Maps from team_members.status
     created_at: datetime
     updated_at: datetime
 
@@ -241,6 +241,7 @@ class NewHireWithTasks(NewHire):
 class NewHireStats(BaseModel):
     total: int
     pending: int
+    onboarding: int
     active: int
     completed: int
     cancelled: int

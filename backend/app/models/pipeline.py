@@ -4,7 +4,7 @@ Manual opportunity tracking for dashboard Kanban
 """
 
 from datetime import date, datetime
-from typing import Literal, Optional
+from typing import Literal, Optional, List
 from pydantic import BaseModel
 
 # ============================================
@@ -36,9 +36,14 @@ class PipelineOpportunity(PipelineOpportunityBase):
     author_name: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+    comments: Optional[List['OpportunityComment']] = None
 
 class OpportunityCommentCreate(BaseModel):
     """Create a new comment on an opportunity"""
+    content: str
+
+class OpportunityCommentUpdate(BaseModel):
+    """Update an existing comment"""
     content: str
 
 class OpportunityComment(BaseModel):

@@ -48,6 +48,25 @@ def run_migration():
             ON pipeline_opportunities(status)
         """)
 
+        # Create opportunity_comments table
+        print("  ➤ Creating opportunity_comments table...")
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS opportunity_comments (
+                id TEXT PRIMARY KEY,
+                opportunity_id TEXT NOT NULL REFERENCES pipeline_opportunities(id) ON DELETE CASCADE,
+                author_id TEXT REFERENCES users(id),
+                author_name TEXT NOT NULL,
+                content TEXT NOT NULL,
+                created_at TEXT DEFAULT (datetime('now'))
+            )
+        """)
+
+        # Create index on opportunity_id for faster lookups
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_opportunity_comments_opportunity_id
+            ON opportunity_comments(opportunity_id)
+        """)
+
         conn.commit()
         print("✅ Pipeline Opportunities migration completed successfully!")
         return True

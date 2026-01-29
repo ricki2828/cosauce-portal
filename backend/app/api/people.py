@@ -705,7 +705,7 @@ async def list_new_hires(
     status: Optional[str] = None,
     current_user = Depends(get_current_user)
 ):
-    """List all new hires - excludes offboarded and onboarding statuses from Talent"""
+    """List employees being onboarded - only those with onboarding template or status 'onboarding'/'pending'"""
     async with aiosqlite.connect(DATA_DIR / "portal.db") as db:
         db.row_factory = aiosqlite.Row
 
@@ -713,7 +713,8 @@ async def list_new_hires(
             SELECT id, name, email, role, department, start_date, manager_id,
                    onboarding_template_id, status, created_at, updated_at
             FROM team_members
-            WHERE status IN ('pending', 'active', 'completed', 'cancelled')
+            WHERE (onboarding_template_id IS NOT NULL OR status IN ('onboarding', 'pending'))
+              AND status NOT IN ('offboarded')
         """
         params = []
 
@@ -739,11 +740,13 @@ async def get_new_hire_stats(
             SELECT
                 COUNT(*) as total,
                 COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) as pending,
+                COALESCE(SUM(CASE WHEN status = 'onboarding' THEN 1 ELSE 0 END), 0) as onboarding,
                 COALESCE(SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END), 0) as active,
                 COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) as completed,
                 COALESCE(SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END), 0) as cancelled
             FROM team_members
-            WHERE status IN ('pending', 'active', 'completed', 'cancelled')
+            WHERE (onboarding_template_id IS NOT NULL OR status IN ('onboarding', 'pending'))
+              AND status NOT IN ('offboarded')
         """) as cursor:
             row = await cursor.fetchone()
             return dict(row)

@@ -16,6 +16,7 @@ from ..models.pipeline import (
     PipelineOpportunity,
     PipelineStats,
     OpportunityCommentCreate,
+    OpportunityCommentUpdate,
     OpportunityComment
 )
 
@@ -30,7 +31,7 @@ async def list_opportunities(
     status: Optional[str] = None,
     current_user = Depends(get_current_user)
 ):
-    """List all pipeline opportunities with author names"""
+    """List all pipeline opportunities with author names and comments"""
     async with aiosqlite.connect(DATA_DIR / "portal.db") as db:
         db.row_factory = aiosqlite.Row
 
@@ -49,7 +50,34 @@ async def list_opportunities(
 
         async with db.execute(query, params) as cursor:
             rows = await cursor.fetchall()
-            return [dict(row) for row in rows]
+            opportunities = [dict(row) for row in rows]
+
+        # Fetch comments for all opportunities
+        opp_ids = [opp['id'] for opp in opportunities]
+        if opp_ids:
+            placeholders = ','.join('?' * len(opp_ids))
+            async with db.execute(f"""
+                SELECT id, opportunity_id, author_id, author_name, content, created_at
+                FROM opportunity_comments
+                WHERE opportunity_id IN ({placeholders})
+                ORDER BY created_at DESC
+            """, opp_ids) as cursor:
+                comment_rows = await cursor.fetchall()
+
+            # Group comments by opportunity_id
+            comments_by_opp = {}
+            for row in comment_rows:
+                comment = dict(row)
+                opp_id = comment['opportunity_id']
+                if opp_id not in comments_by_opp:
+                    comments_by_opp[opp_id] = []
+                comments_by_opp[opp_id].append(comment)
+
+            # Attach comments to opportunities
+            for opp in opportunities:
+                opp['comments'] = comments_by_opp.get(opp['id'], [])
+
+        return opportunities
 
 @router.get("/opportunities/stats", response_model=PipelineStats)
 async def get_pipeline_stats(
@@ -243,3 +271,89 @@ async def add_opportunity_comment(
             content=comment.content,
             created_at=now
         )
+
+@router.get("/opportunities/{opportunity_id}/comments", response_model=List[OpportunityComment])
+async def get_opportunity_comments(
+    opportunity_id: str,
+    current_user = Depends(get_current_user)
+):
+    """Get all comments for an opportunity"""
+    async with aiosqlite.connect(DATA_DIR / "portal.db") as db:
+        db.row_factory = aiosqlite.Row
+
+        # Check if opportunity exists
+        async with db.execute("SELECT id FROM pipeline_opportunities WHERE id = ?", (opportunity_id,)) as cursor:
+            existing = await cursor.fetchone()
+
+        if not existing:
+            raise HTTPException(status_code=404, detail="Opportunity not found")
+
+        # Get comments ordered by most recent first
+        async with db.execute("""
+            SELECT id, opportunity_id, author_id, author_name, content, created_at
+            FROM opportunity_comments
+            WHERE opportunity_id = ?
+            ORDER BY created_at DESC
+        """, (opportunity_id,)) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
+
+@router.put("/opportunities/{opportunity_id}/comments/{comment_id}", response_model=OpportunityComment)
+async def update_opportunity_comment(
+    opportunity_id: str,
+    comment_id: str,
+    comment: OpportunityCommentUpdate,
+    current_user = Depends(get_current_user)
+):
+    """Update a comment on an opportunity"""
+    async with aiosqlite.connect(DATA_DIR / "portal.db") as db:
+        db.row_factory = aiosqlite.Row
+
+        # Check if comment exists and belongs to the opportunity
+        async with db.execute(
+            "SELECT * FROM opportunity_comments WHERE id = ? AND opportunity_id = ?",
+            (comment_id, opportunity_id)
+        ) as cursor:
+            existing = await cursor.fetchone()
+
+        if not existing:
+            raise HTTPException(status_code=404, detail="Comment not found")
+
+        # Update the comment
+        await db.execute(
+            "UPDATE opportunity_comments SET content = ? WHERE id = ?",
+            (comment.content, comment_id)
+        )
+        await db.commit()
+
+        # Return updated comment
+        async with db.execute(
+            "SELECT * FROM opportunity_comments WHERE id = ?",
+            (comment_id,)
+        ) as cursor:
+            row = await cursor.fetchone()
+            return dict(row)
+
+@router.delete("/opportunities/{opportunity_id}/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_opportunity_comment(
+    opportunity_id: str,
+    comment_id: str,
+    current_user = Depends(get_current_user)
+):
+    """Delete a comment from an opportunity"""
+    async with aiosqlite.connect(DATA_DIR / "portal.db") as db:
+        # Check if comment exists and belongs to the opportunity
+        async with db.execute(
+            "SELECT id FROM opportunity_comments WHERE id = ? AND opportunity_id = ?",
+            (comment_id, opportunity_id)
+        ) as cursor:
+            existing = await cursor.fetchone()
+
+        if not existing:
+            raise HTTPException(status_code=404, detail="Comment not found")
+
+        # Delete the comment
+        await db.execute("DELETE FROM opportunity_comments WHERE id = ?", (comment_id,))
+        await db.commit()
+
+    return None
