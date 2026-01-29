@@ -9,6 +9,9 @@ import type {
   PaginatedResponse,
   TeamLeaderProfile, DirectSubmitRequest
 } from './business-updates-types';
+import type {
+  Employee, OrgNode, Department, EmployeeCreate, EmployeeUpdate, TalentStats
+} from './talent-types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://91.98.79.241:8004';
 
@@ -946,6 +949,10 @@ export interface OpportunityCommentCreate {
   content: string;
 }
 
+export interface OpportunityCommentUpdate {
+  content: string;
+}
+
 export interface PipelineOpportunity {
   id: string;
   client_name: string;
@@ -958,6 +965,7 @@ export interface PipelineOpportunity {
   author_name: string | null;  // Author name from users table join
   created_at: string;
   updated_at: string;
+  comments?: OpportunityComment[];  // Comments on the opportunity
 }
 
 export interface PipelineOpportunityCreate {
@@ -1009,6 +1017,10 @@ export const pipelineApi = {
   // Opportunity Comments
   addOpportunityComment: (opportunityId: string, data: OpportunityCommentCreate) =>
     api.post<OpportunityComment>(`/api/pipeline/opportunities/${opportunityId}/comments`, data),
+  updateOpportunityComment: (opportunityId: string, commentId: string, data: OpportunityCommentUpdate) =>
+    api.put<OpportunityComment>(`/api/pipeline/opportunities/${opportunityId}/comments/${commentId}`, data),
+  deleteOpportunityComment: (opportunityId: string, commentId: string) =>
+    api.delete(`/api/pipeline/opportunities/${opportunityId}/comments/${commentId}`),
 };
 
 // ==================== USER MANAGEMENT TYPES ====================
@@ -1053,4 +1065,40 @@ export const usersApi = {
 
   resetUserPassword: (id: string, newPassword: string) =>
     api.post(`/api/users/${id}/reset-password`, { new_password: newPassword }),
+};
+
+// ==================== TALENT ORG CHART API ====================
+
+export const talentApi = {
+  // Get all employees with optional filters
+  getEmployees: (params?: { status?: string; department?: string; account_id?: string }) =>
+    api.get<Employee[]>('/api/talent/employees', { params }),
+
+  // Get single employee by ID
+  getEmployee: (id: string) =>
+    api.get<Employee>(`/api/talent/employees/${id}`),
+
+  // Get org tree structure (hierarchical)
+  getOrgTree: (params?: { status?: string; department?: string }) =>
+    api.get<OrgNode[]>('/api/talent/org-tree', { params }),
+
+  // Create new employee
+  createEmployee: (data: EmployeeCreate) =>
+    api.post<Employee>('/api/talent/employees', data),
+
+  // Update employee
+  updateEmployee: (id: string, data: EmployeeUpdate) =>
+    api.put<Employee>(`/api/talent/employees/${id}`, data),
+
+  // Delete (offboard) employee
+  deleteEmployee: (id: string) =>
+    api.delete(`/api/talent/employees/${id}`),
+
+  // Get departments with employee counts
+  getDepartments: () =>
+    api.get<Department[]>('/api/talent/departments'),
+
+  // Get org chart statistics
+  getStats: () =>
+    api.get<TalentStats>('/api/talent/stats'),
 };

@@ -11,6 +11,7 @@ import { Settings } from './pages/Settings';
 import { Priorities } from './pages/Priorities';
 import { People } from './pages/People';
 import { BusinessUpdates } from './pages/BusinessUpdates';
+import { Talent } from './pages/Talent';
 import Login from './pages/Login';
 
 const queryClient = new QueryClient();
@@ -39,6 +40,7 @@ function App() {
               <Route path="sales" element={<Sales />} />
               <Route path="outreach" element={<Outreach />} />
               <Route path="people" element={<People />} />
+              <Route path="talent" element={<Talent />} />
               <Route path="business-updates" element={<BusinessUpdates />} />
               <Route path="settings" element={<Settings />} />
             </Route>
