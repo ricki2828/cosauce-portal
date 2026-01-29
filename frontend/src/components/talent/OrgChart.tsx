@@ -98,8 +98,9 @@ function buildFlowGraph(
 
     // Create edge from parent
     if (parentId) {
-      // Use straight edges for vertically stacked children to avoid horizontal extension
-      const edgeType = (parentLayoutDirection === 'vertical' || parentLayoutDirection === 'grouped')
+      // Use straight edges only for vertical stacking (same column)
+      // Use smooth step for grouped layout to avoid harsh diagonals
+      const edgeType = parentLayoutDirection === 'vertical'
         ? ConnectionLineType.Straight
         : ConnectionLineType.SmoothStep;
 
