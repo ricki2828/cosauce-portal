@@ -12,6 +12,8 @@ export interface Employee {
   manager_id: string | null;  // Reports to
   status: 'pending' | 'onboarding' | 'active' | 'offboarded';
   start_date: string | null;  // ISO date string
+  performance: 'Excellent' | 'High' | 'Good' | 'Low' | 'Very Low' | null;
+  potential: 'Excellent' | 'High' | 'Good' | 'Low' | 'Very Low' | null;
   created_at: string;
   updated_at: string;
 }
@@ -35,6 +37,8 @@ export interface EmployeeCreate {
   manager_id?: string;
   status?: 'pending' | 'onboarding' | 'active' | 'offboarded';
   start_date?: string;
+  performance?: 'Excellent' | 'High' | 'Good' | 'Low' | 'Very Low';
+  potential?: 'Excellent' | 'High' | 'Good' | 'Low' | 'Very Low';
 }
 
 export interface EmployeeUpdate {
@@ -46,6 +50,8 @@ export interface EmployeeUpdate {
   manager_id?: string;
   status?: 'pending' | 'onboarding' | 'active' | 'offboarded';
   start_date?: string;
+  performance?: 'Excellent' | 'High' | 'Good' | 'Low' | 'Very Low';
+  potential?: 'Excellent' | 'High' | 'Good' | 'Low' | 'Very Low';
 }
 
 export interface TalentStats {

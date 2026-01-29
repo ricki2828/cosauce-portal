@@ -20,6 +20,8 @@ class EmployeeBase(BaseModel):
     manager_id: Optional[str] = None  # Reports to
     status: Literal['pending', 'onboarding', 'active', 'offboarded'] = 'active'
     start_date: Optional[str] = None  # ISO date string
+    performance: Optional[Literal['Excellent', 'High', 'Good', 'Low', 'Very Low']] = None
+    potential: Optional[Literal['Excellent', 'High', 'Good', 'Low', 'Very Low']] = None
 
 
 class EmployeeCreate(EmployeeBase):
@@ -37,6 +39,8 @@ class EmployeeUpdate(BaseModel):
     manager_id: Optional[str] = None
     status: Optional[Literal['pending', 'onboarding', 'active', 'offboarded']] = None
     start_date: Optional[str] = None
+    performance: Optional[Literal['Excellent', 'High', 'Good', 'Low', 'Very Low']] = None
+    potential: Optional[Literal['Excellent', 'High', 'Good', 'Low', 'Very Low']] = None
 
 
 class Employee(EmployeeBase):

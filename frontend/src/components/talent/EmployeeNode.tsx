@@ -1,7 +1,34 @@
 import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 import type { Employee } from '../../lib/talent-types';
-import { Mail, Edit2, Trash2 } from 'lucide-react';
+import { Mail, Edit2, Trash2, Calendar } from 'lucide-react';
+
+// Helper function to calculate tenure
+function calculateTenure(startDate: string | null): string | null {
+  if (!startDate) return null;
+
+  const start = new Date(startDate);
+  const now = new Date();
+
+  const diffMs = now.getTime() - start.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) return 'Starts soon';
+  if (diffDays === 0) return 'Started today';
+  if (diffDays < 30) return `${diffDays} day${diffDays !== 1 ? 's' : ''}`;
+
+  const months = Math.floor(diffDays / 30);
+  const years = Math.floor(months / 12);
+  const remainingMonths = months % 12;
+
+  if (years === 0) {
+    return `${months} month${months !== 1 ? 's' : ''}`;
+  } else if (remainingMonths === 0) {
+    return `${years} year${years !== 1 ? 's' : ''}`;
+  } else {
+    return `${years}y ${remainingMonths}m`;
+  }
+}
 
 interface EmployeeNodeProps {
   data: {
@@ -14,7 +41,16 @@ interface EmployeeNodeProps {
 function EmployeeNode({ data }: EmployeeNodeProps) {
   const { employee, onEdit, onDelete } = data;
 
-  // Status colors
+  // Performance-based colors (takes priority if set)
+  const performanceColors = {
+    'Excellent': 'bg-emerald-50 border-emerald-300',
+    'High': 'bg-green-50 border-green-200',
+    'Good': 'bg-amber-50 border-amber-200',
+    'Low': 'bg-orange-50 border-orange-300',
+    'Very Low': 'bg-red-50 border-red-300'
+  };
+
+  // Status colors (fallback)
   const statusColors = {
     active: 'bg-green-50 border-green-200',
     pending: 'bg-yellow-50 border-yellow-200',
@@ -29,7 +65,10 @@ function EmployeeNode({ data }: EmployeeNodeProps) {
     offboarded: 'bg-red-500'
   };
 
-  const statusClass = statusColors[employee.status] || statusColors.active;
+  // Use performance color if available, otherwise use status color
+  const cardClass = employee.performance
+    ? performanceColors[employee.performance]
+    : statusColors[employee.status] || statusColors.active;
   const dotClass = statusDots[employee.status] || statusDots.active;
 
   return (
@@ -46,7 +85,7 @@ function EmployeeNode({ data }: EmployeeNodeProps) {
         className={`
           w-48 rounded-lg border-2 border-dashed p-4 shadow-sm
           transition-all hover:shadow-lg
-          ${statusClass}
+          ${cardClass}
         `}
       >
         {/* Status indicator */}
@@ -71,11 +110,35 @@ function EmployeeNode({ data }: EmployeeNodeProps) {
           </div>
         )}
 
+        {/* Tenure */}
+        {calculateTenure(employee.start_date) && (
+          <div className="flex items-center gap-1 text-xs text-gray-500 mb-2">
+            <Calendar className="w-3 h-3 flex-shrink-0" />
+            <span>{calculateTenure(employee.start_date)}</span>
+          </div>
+        )}
+
         {/* Email */}
         {employee.email && (
-          <div className="flex items-center gap-1 text-xs text-gray-500 mt-2">
+          <div className="flex items-center gap-1 text-xs text-gray-500 mb-2">
             <Mail className="w-3 h-3 flex-shrink-0" />
             <span className="truncate">{employee.email}</span>
+          </div>
+        )}
+
+        {/* Performance & Potential Badges */}
+        {(employee.performance || employee.potential) && (
+          <div className="flex gap-1 mt-2">
+            {employee.performance && (
+              <div className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">
+                P: {employee.performance}
+              </div>
+            )}
+            {employee.potential && (
+              <div className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">
+                Pot: {employee.potential}
+              </div>
+            )}
           </div>
         )}
 

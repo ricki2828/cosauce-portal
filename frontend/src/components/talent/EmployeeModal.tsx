@@ -23,7 +23,9 @@ export default function EmployeeModal({
     account_id: '',
     manager_id: '',
     status: 'active' as 'active' | 'pending' | 'onboarding' | 'offboarded',
-    start_date: ''
+    start_date: '',
+    performance: '' as '' | 'Excellent' | 'High' | 'Good' | 'Low' | 'Very Low',
+    potential: '' as '' | 'Excellent' | 'High' | 'Good' | 'Low' | 'Very Low'
   });
 
   const [saving, setSaving] = useState(false);
@@ -40,7 +42,9 @@ export default function EmployeeModal({
         account_id: employee.account_id || '',
         manager_id: employee.manager_id || '',
         status: employee.status,
-        start_date: employee.start_date || ''
+        start_date: employee.start_date || '',
+        performance: employee.performance || '',
+        potential: employee.potential || ''
       });
     }
   }, [employee]);
@@ -58,7 +62,9 @@ export default function EmployeeModal({
         department: formData.department || undefined,
         account_id: formData.account_id || undefined,
         manager_id: formData.manager_id || undefined,
-        start_date: formData.start_date || undefined
+        start_date: formData.start_date || undefined,
+        performance: formData.performance || undefined,
+        potential: formData.potential || undefined
       };
 
       await onSave(data);
@@ -233,6 +239,52 @@ export default function EmployeeModal({
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 disabled={saving}
               />
+            </div>
+
+            {/* Performance */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Performance
+              </label>
+              <select
+                value={formData.performance}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  performance: e.target.value as '' | 'Excellent' | 'High' | 'Good' | 'Low' | 'Very Low'
+                })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                disabled={saving}
+              >
+                <option value="">Not Rated</option>
+                <option value="Excellent">Excellent</option>
+                <option value="High">High</option>
+                <option value="Good">Good</option>
+                <option value="Low">Low</option>
+                <option value="Very Low">Very Low</option>
+              </select>
+            </div>
+
+            {/* Potential */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Potential
+              </label>
+              <select
+                value={formData.potential}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  potential: e.target.value as '' | 'Excellent' | 'High' | 'Good' | 'Low' | 'Very Low'
+                })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                disabled={saving}
+              >
+                <option value="">Not Rated</option>
+                <option value="Excellent">Excellent</option>
+                <option value="High">High</option>
+                <option value="Good">Good</option>
+                <option value="Low">Low</option>
+                <option value="Very Low">Very Low</option>
+              </select>
             </div>
           </div>
 
