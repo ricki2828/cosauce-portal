@@ -73,21 +73,21 @@ function EmployeeNode({ data }: EmployeeNodeProps) {
   const groupName = employee.account_id || employee.department;
   const color = groupColor || getGroupColor(groupName);
 
-  // Performance-based colors (takes priority if set)
+  // Performance-based colors with vibrant backgrounds
   const performanceColors = {
-    'Excellent': 'bg-emerald-50 border-emerald-300',
-    'High': 'bg-green-50 border-green-200',
-    'Good': 'bg-amber-50 border-amber-200',
-    'Low': 'bg-orange-50 border-orange-300',
-    'Very Low': 'bg-red-50 border-red-300'
+    'Excellent': { bg: 'bg-green-500', border: 'border-green-600', text: 'text-white' },
+    'High': { bg: 'bg-green-300', border: 'border-green-400', text: 'text-gray-900' },
+    'Good': { bg: 'bg-amber-400', border: 'border-amber-500', text: 'text-gray-900' },
+    'Low': { bg: 'bg-red-300', border: 'border-red-400', text: 'text-gray-900' },
+    'Very Low': { bg: 'bg-red-500', border: 'border-red-600', text: 'text-white' }
   };
 
-  // Status colors (fallback)
+  // Status colors (fallback when no performance rating)
   const statusColors = {
-    active: 'bg-green-50 border-green-200',
-    pending: 'bg-yellow-50 border-yellow-200',
-    onboarding: 'bg-blue-50 border-blue-200',
-    offboarded: 'bg-red-50 border-red-200'
+    active: { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-900' },
+    pending: { bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-gray-900' },
+    onboarding: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-gray-900' },
+    offboarded: { bg: 'bg-gray-300', border: 'border-gray-400', text: 'text-gray-900' }
   };
 
   const statusDots = {
@@ -98,9 +98,12 @@ function EmployeeNode({ data }: EmployeeNodeProps) {
   };
 
   // Use performance color if available, otherwise use status color
-  const cardClass = employee.performance
+  const colorScheme = employee.performance
     ? performanceColors[employee.performance]
     : statusColors[employee.status] || statusColors.active;
+
+  const cardClass = `${colorScheme.bg} ${colorScheme.border}`;
+  const textClass = colorScheme.text;
   const dotClass = statusDots[employee.status] || statusDots.active;
 
   return (
@@ -154,22 +157,22 @@ function EmployeeNode({ data }: EmployeeNodeProps) {
 
         {/* Status indicator */}
         <div className="absolute top-2 right-2">
-          <div className={`w-2 h-2 rounded-full ${dotClass}`} title={employee.status} />
+          <div className={`w-2 h-2 rounded-full ${dotClass} ring-2 ring-white`} title={employee.status} />
         </div>
 
         {/* Name */}
-        <div className="font-bold text-gray-900 text-sm mb-1 pr-4">
+        <div className={`font-bold text-sm mb-1 pr-4 ${textClass}`}>
           {employee.name}
         </div>
 
         {/* Job title */}
-        <div className="text-xs text-gray-600 mb-2">
+        <div className={`text-xs mb-2 ${textClass} opacity-90`}>
           {employee.role}
         </div>
 
         {/* Department (if exists) */}
         {employee.department && (
-          <div className="text-xs text-gray-500 mb-2 italic">
+          <div className={`text-xs mb-2 italic ${textClass} opacity-80`}>
             {employee.department}
           </div>
         )}
@@ -178,9 +181,9 @@ function EmployeeNode({ data }: EmployeeNodeProps) {
         {employee.account_id && color && (
           <div className="mb-2">
             <div
-              className="text-[10px] px-2 py-0.5 rounded-full font-medium inline-block"
+              className="text-[10px] px-2 py-0.5 rounded-full font-medium inline-block bg-white bg-opacity-90 border"
               style={{
-                backgroundColor: `${color}20`,
+                borderColor: color,
                 color: color
               }}
             >
@@ -191,7 +194,7 @@ function EmployeeNode({ data }: EmployeeNodeProps) {
 
         {/* Tenure */}
         {calculateTenure(employee.start_date) && (
-          <div className="flex items-center gap-1 text-xs text-gray-500 mb-2">
+          <div className={`flex items-center gap-1 text-xs mb-2 ${textClass} opacity-80`}>
             <Calendar className="w-3 h-3 flex-shrink-0" />
             <span>{calculateTenure(employee.start_date)}</span>
           </div>
@@ -199,7 +202,7 @@ function EmployeeNode({ data }: EmployeeNodeProps) {
 
         {/* Email */}
         {employee.email && (
-          <div className="flex items-center gap-1 text-xs text-gray-500 mb-2">
+          <div className={`flex items-center gap-1 text-xs mb-2 ${textClass} opacity-80`}>
             <Mail className="w-3 h-3 flex-shrink-0" />
             <span className="truncate">{employee.email}</span>
           </div>
@@ -209,12 +212,12 @@ function EmployeeNode({ data }: EmployeeNodeProps) {
         {(employee.performance || employee.potential) && (
           <div className="flex gap-1 mt-2">
             {employee.performance && (
-              <div className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">
+              <div className="text-[10px] px-2 py-0.5 rounded-full bg-white bg-opacity-90 text-gray-800 font-medium border border-gray-300">
                 P: {employee.performance}
               </div>
             )}
             {employee.potential && (
-              <div className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">
+              <div className="text-[10px] px-2 py-0.5 rounded-full bg-white bg-opacity-90 text-gray-800 font-medium border border-gray-300">
                 Pot: {employee.potential}
               </div>
             )}
