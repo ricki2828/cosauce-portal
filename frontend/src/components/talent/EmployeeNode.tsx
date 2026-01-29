@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 import type { Employee } from '../../lib/talent-types';
-import { Mail, Edit2, Trash2, Calendar, ArrowDownToLine, ArrowRightToLine } from 'lucide-react';
+import { Mail, Edit2, Trash2, Calendar, MoveHorizontal, MoveVertical } from 'lucide-react';
 
 // Helper function to calculate tenure
 function calculateTenure(startDate: string | null): string | null {
@@ -133,13 +133,13 @@ function EmployeeNode({ data }: EmployeeNodeProps) {
               e.stopPropagation();
               onToggleLayout();
             }}
-            className="absolute top-2 left-2 p-1 bg-white rounded shadow-sm hover:bg-gray-100 transition-colors z-10"
-            title={layoutDirection === 'horizontal' ? 'Switch to vertical layout' : 'Switch to horizontal layout'}
+            className="absolute top-2 left-2 p-1.5 bg-white rounded-md shadow-sm hover:bg-blue-50 hover:shadow transition-all z-10 border border-gray-200"
+            title={layoutDirection === 'horizontal' ? 'Switch to vertical layout (stack reports)' : 'Switch to horizontal layout (spread reports)'}
           >
             {layoutDirection === 'horizontal' ? (
-              <ArrowDownToLine className="w-3 h-3 text-gray-600" />
+              <MoveVertical className="w-3.5 h-3.5 text-blue-600" />
             ) : (
-              <ArrowRightToLine className="w-3 h-3 text-gray-600" />
+              <MoveHorizontal className="w-3.5 h-3.5 text-blue-600" />
             )}
           </button>
         )}
