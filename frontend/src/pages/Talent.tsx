@@ -92,6 +92,19 @@ export function Talent() {
     setEditingEmployee(null);
   };
 
+  const handleLayoutToggle = async (employeeId: string, currentLayout: 'horizontal' | 'vertical' | 'grouped') => {
+    // Cycle through layouts: horizontal -> vertical -> grouped -> horizontal
+    const next = currentLayout === 'horizontal' ? 'vertical' : currentLayout === 'vertical' ? 'grouped' : 'horizontal';
+
+    try {
+      await talentApi.updateEmployee(employeeId, { layout_direction: next });
+      await loadData(); // Reload to get updated layout
+    } catch (err: any) {
+      console.error('Error updating layout direction:', err);
+      alert('Failed to update layout direction: ' + (err.response?.data?.detail || err.message));
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -159,6 +172,7 @@ export function Talent() {
           orgTree={orgTree}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          onLayoutToggle={handleLayoutToggle}
         />
       </div>
 

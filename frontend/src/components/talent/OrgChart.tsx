@@ -18,6 +18,7 @@ interface OrgChartProps {
   orgTree: OrgNode[];
   onEdit: (employee: Employee) => void;
   onDelete: (id: string) => void;
+  onLayoutToggle?: (employeeId: string, currentLayout: 'horizontal' | 'vertical' | 'grouped') => Promise<void>;
 }
 
 // Custom node types
@@ -34,8 +35,8 @@ function buildFlowGraph(
   xOffset: number = 0,
   onEdit: (employee: Employee) => void,
   onDelete: (id: string) => void,
-  layoutDirections: Map<string, 'horizontal' | 'vertical'>,
-  onToggleLayout: (nodeId: string) => void
+  layoutDirections: Map<string, 'horizontal' | 'vertical' | 'grouped'>,
+  onToggleLayout: (nodeId: string, currentLayout: 'horizontal' | 'vertical' | 'grouped') => void
 ): { nodes: Node[]; edges: Edge[]; width: number } {
   const flowNodes: Node[] = [];
   const flowEdges: Edge[] = [];
@@ -89,7 +90,7 @@ function buildFlowGraph(
         onDelete: () => onDelete(node.id),
         hasReports,
         layoutDirection,
-        onToggleLayout: hasReports ? () => onToggleLayout(nodeId) : undefined
+        onToggleLayout: hasReports ? () => onToggleLayout(nodeId, layoutDirection) : undefined
       }
     });
 
@@ -227,7 +228,7 @@ function buildFlowGraph(
   };
 }
 
-export default function OrgChart({ orgTree, onEdit, onDelete }: OrgChartProps) {
+export default function OrgChart({ orgTree, onEdit, onDelete, onLayoutToggle }: OrgChartProps) {
   // Extract layout directions from employee data (comes from database)
   const layoutDirections = useMemo(() => {
     const map = new Map<string, 'horizontal' | 'vertical' | 'grouped'>();
@@ -246,33 +247,11 @@ export default function OrgChart({ orgTree, onEdit, onDelete }: OrgChartProps) {
   }, [orgTree]);
 
   // Toggle layout direction for a node and save to database
-  const handleToggleLayout = useCallback(async (nodeId: string) => {
-    const current = layoutDirections.get(nodeId) || 'horizontal';
-    const next = current === 'horizontal' ? 'vertical' : current === 'vertical' ? 'grouped' : 'horizontal';
-
-    // Update via API
-    try {
-      const response = await fetch(`/api/talent/employees/${nodeId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ layout_direction: next })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update layout direction');
-      }
-
-      // Trigger reload by calling parent's edit handler (which reloads data)
-      // This is a bit of a hack but works with existing architecture
-      window.location.reload();
-    } catch (error) {
-      console.error('Error updating layout direction:', error);
-      alert('Failed to update layout direction');
+  const handleToggleLayout = useCallback(async (nodeId: string, currentLayout: 'horizontal' | 'vertical' | 'grouped') => {
+    if (onLayoutToggle) {
+      await onLayoutToggle(nodeId, currentLayout);
     }
-  }, [layoutDirections]);
+  }, [onLayoutToggle]);
 
   // Build ReactFlow graph
   const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
