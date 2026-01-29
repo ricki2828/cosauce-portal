@@ -37,13 +37,14 @@ function buildFlowGraph(
   onDelete: (id: string) => void,
   layoutDirections: Map<string, 'horizontal' | 'vertical' | 'grouped'>,
   onToggleLayout: (nodeId: string, currentLayout: 'horizontal' | 'vertical' | 'grouped') => void
-): { nodes: Node[]; edges: Edge[]; width: number } {
+): { nodes: Node[]; edges: Edge[]; width: number; height: number } {
   const flowNodes: Node[] = [];
   const flowEdges: Edge[] = [];
   const HORIZONTAL_SPACING = 250;
   const VERTICAL_SPACING = 150;
 
   let currentX = xOffset;
+  let maxHeight = VERTICAL_SPACING; // Track the maximum height of this level
 
   // Sort nodes by client (account_id) first, then department, then name
   // This keeps employees from the same team/client grouped together
@@ -111,6 +112,8 @@ function buildFlowGraph(
       if (layoutDirection === 'vertical') {
         // Vertical layout: stack children vertically at same X position
         let childY = (depth + 1) * VERTICAL_SPACING;
+        let totalHeight = VERTICAL_SPACING; // Start with space for current node
+
         node.reports.forEach((childNode, childIndex) => {
           const childGraph = buildFlowGraph(
             [childNode],
@@ -134,13 +137,16 @@ function buildFlowGraph(
               n.position.y += yOffset;
             });
 
-            childY += VERTICAL_SPACING;
+            // Move down by the full height of this subtree
+            childY += childGraph.height;
+            totalHeight += childGraph.height;
           }
 
           flowNodes.push(...childGraph.nodes);
           flowEdges.push(...childGraph.edges);
         });
 
+        maxHeight = Math.max(maxHeight, totalHeight);
         currentX += HORIZONTAL_SPACING;
       } else if (layoutDirection === 'grouped') {
         // Grouped layout: create vertical columns grouped by client/department
@@ -179,6 +185,7 @@ function buildFlowGraph(
         allGroups.forEach(([groupKey, groupNodes]) => {
           let groupX = currentX;
           let childY = (depth + 1) * VERTICAL_SPACING;
+          let groupHeight = VERTICAL_SPACING; // Start with space for current node
 
           groupNodes.forEach((childNode) => {
             const childGraph = buildFlowGraph(
@@ -204,13 +211,16 @@ function buildFlowGraph(
                 n.position.y += yOffset;
               });
 
-              childY += VERTICAL_SPACING;
+              // Move down by the full height of this subtree
+              childY += childGraph.height;
+              groupHeight += childGraph.height;
             }
 
             flowNodes.push(...childGraph.nodes);
             flowEdges.push(...childGraph.edges);
           });
 
+          maxHeight = Math.max(maxHeight, groupHeight);
           // Move to next column
           currentX += HORIZONTAL_SPACING;
         });
@@ -230,6 +240,9 @@ function buildFlowGraph(
         flowNodes.push(...childGraph.nodes);
         flowEdges.push(...childGraph.edges);
 
+        // Track height including children
+        maxHeight = Math.max(maxHeight, VERTICAL_SPACING + childGraph.height);
+
         // Adjust current position for next sibling
         currentX += childGraph.width;
       }
@@ -241,7 +254,8 @@ function buildFlowGraph(
   return {
     nodes: flowNodes,
     edges: flowEdges,
-    width: currentX - xOffset || HORIZONTAL_SPACING
+    width: currentX - xOffset || HORIZONTAL_SPACING,
+    height: maxHeight
   };
 }
 
