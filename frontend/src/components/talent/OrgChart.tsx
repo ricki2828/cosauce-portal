@@ -98,20 +98,24 @@ function buildFlowGraph(
 
     // Create edge from parent
     if (parentId) {
-      // Use straight edges only for vertical stacking (same column)
-      // Use smooth step for grouped layout to avoid harsh diagonals
-      const edgeType = parentLayoutDirection === 'vertical'
-        ? ConnectionLineType.Straight
-        : ConnectionLineType.SmoothStep;
-
-      flowEdges.push({
+      // Edge type selection:
+      // - Vertical layout (stacking): Use Straight edges (clean vertical lines in same column)
+      // - Grouped/Horizontal layouts: Don't specify type (uses default Bezier - smooth curves without horizontal segments)
+      const edge: Edge = {
         id: `${parentId}-${nodeId}`,
         source: parentId,
         target: nodeId,
-        type: edgeType,
         style: { stroke: '#6b7280', strokeWidth: 2 },
         animated: false
-      });
+      };
+
+      // Only add type for vertical layout (straight lines)
+      if (parentLayoutDirection === 'vertical') {
+        edge.type = ConnectionLineType.Straight;
+      }
+      // For grouped/horizontal: omit type to use default bezier curve
+
+      flowEdges.push(edge);
     }
 
     // Recursively process children
