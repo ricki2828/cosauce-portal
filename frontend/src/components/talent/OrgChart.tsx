@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -12,6 +12,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import type { OrgNode, Employee } from '../../lib/talent-types';
 import EmployeeNode from './EmployeeNode';
+import GroupNode from './GroupNode';
 
 interface OrgChartProps {
   orgTree: OrgNode[];
@@ -21,7 +22,8 @@ interface OrgChartProps {
 
 // Custom node types
 const nodeTypes = {
-  employee: EmployeeNode
+  employee: EmployeeNode,
+  group: GroupNode
 };
 
 // Convert org tree to ReactFlow nodes and edges
@@ -31,7 +33,9 @@ function buildFlowGraph(
   parentId: string | null = null,
   xOffset: number = 0,
   onEdit: (employee: Employee) => void,
-  onDelete: (id: string) => void
+  onDelete: (id: string) => void,
+  layoutDirections: Map<string, 'horizontal' | 'vertical'>,
+  onToggleLayout: (nodeId: string) => void
 ): { nodes: Node[]; edges: Edge[]; width: number } {
   const flowNodes: Node[] = [];
   const flowEdges: Edge[] = [];
@@ -40,9 +44,12 @@ function buildFlowGraph(
 
   let currentX = xOffset;
 
-  nodes.forEach((node) => {
+  nodes.forEach((node, index) => {
     // Create node
     const nodeId = node.id;
+    const hasReports = node.reports && node.reports.length > 0;
+    const layoutDirection = layoutDirections.get(nodeId) || 'horizontal';
+
     flowNodes.push({
       id: nodeId,
       type: 'employee',
@@ -50,7 +57,10 @@ function buildFlowGraph(
       data: {
         employee: node,
         onEdit: () => onEdit(node),
-        onDelete: () => onDelete(node.id)
+        onDelete: () => onDelete(node.id),
+        hasReports,
+        layoutDirection,
+        onToggleLayout: hasReports ? () => onToggleLayout(nodeId) : undefined
       }
     });
 
@@ -67,21 +77,52 @@ function buildFlowGraph(
     }
 
     // Recursively process children
-    if (node.reports && node.reports.length > 0) {
-      const childGraph = buildFlowGraph(
-        node.reports,
-        depth + 1,
-        nodeId,
-        currentX,
-        onEdit,
-        onDelete
-      );
+    if (hasReports) {
+      if (layoutDirection === 'vertical') {
+        // Vertical layout: stack children vertically at same X position
+        let childY = (depth + 1) * VERTICAL_SPACING;
+        node.reports.forEach((childNode, childIndex) => {
+          const childGraph = buildFlowGraph(
+            [childNode],
+            depth + 1,
+            nodeId,
+            currentX,
+            onEdit,
+            onDelete,
+            layoutDirections,
+            onToggleLayout
+          );
 
-      flowNodes.push(...childGraph.nodes);
-      flowEdges.push(...childGraph.edges);
+          // Adjust Y positions for vertical stacking
+          childGraph.nodes.forEach(n => {
+            n.position.y = childY;
+            childY += VERTICAL_SPACING;
+          });
 
-      // Adjust current position for next sibling
-      currentX += childGraph.width;
+          flowNodes.push(...childGraph.nodes);
+          flowEdges.push(...childGraph.edges);
+        });
+
+        currentX += HORIZONTAL_SPACING;
+      } else {
+        // Horizontal layout: spread children horizontally (original behavior)
+        const childGraph = buildFlowGraph(
+          node.reports,
+          depth + 1,
+          nodeId,
+          currentX,
+          onEdit,
+          onDelete,
+          layoutDirections,
+          onToggleLayout
+        );
+
+        flowNodes.push(...childGraph.nodes);
+        flowEdges.push(...childGraph.edges);
+
+        // Adjust current position for next sibling
+        currentX += childGraph.width;
+      }
     } else {
       currentX += HORIZONTAL_SPACING;
     }
@@ -95,15 +136,28 @@ function buildFlowGraph(
 }
 
 export default function OrgChart({ orgTree, onEdit, onDelete }: OrgChartProps) {
+  // Track layout direction for each node (horizontal by default)
+  const [layoutDirections, setLayoutDirections] = useState<Map<string, 'horizontal' | 'vertical'>>(new Map());
+
+  // Toggle layout direction for a node
+  const handleToggleLayout = useCallback((nodeId: string) => {
+    setLayoutDirections(prev => {
+      const newMap = new Map(prev);
+      const current = newMap.get(nodeId) || 'horizontal';
+      newMap.set(nodeId, current === 'horizontal' ? 'vertical' : 'horizontal');
+      return newMap;
+    });
+  }, []);
+
   // Build ReactFlow graph
   const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
     if (!orgTree || orgTree.length === 0) {
       return { nodes: [], edges: [] };
     }
 
-    const graph = buildFlowGraph(orgTree, 0, null, 0, onEdit, onDelete);
+    const graph = buildFlowGraph(orgTree, 0, null, 0, onEdit, onDelete, layoutDirections, handleToggleLayout);
     return graph;
-  }, [orgTree, onEdit, onDelete]);
+  }, [orgTree, onEdit, onDelete, layoutDirections, handleToggleLayout]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);

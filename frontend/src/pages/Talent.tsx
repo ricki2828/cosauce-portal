@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { talentApi } from '../lib/api';
 import type { OrgNode, Employee } from '../lib/talent-types';
 import { Plus, Loader2 } from 'lucide-react';
-import { OrgChart, EmployeeModal, FilterBar } from '../components/talent';
+import { OrgChart, EmployeeModal, FilterBar, GroupLegend } from '../components/talent';
 
 export function Talent() {
   const [orgTree, setOrgTree] = useState<OrgNode[]>([]);
@@ -149,6 +149,9 @@ export function Talent() {
         onStatusChange={setStatusFilter}
         onDepartmentChange={setDepartmentFilter}
       />
+
+      {/* Group Legend */}
+      <GroupLegend employees={allEmployees} />
 
       {/* Org Chart */}
       <div className="flex-1 overflow-hidden">

@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 import type { Employee } from '../../lib/talent-types';
-import { Mail, Edit2, Trash2, Calendar } from 'lucide-react';
+import { Mail, Edit2, Trash2, Calendar, ArrowDownToLine, ArrowRightToLine } from 'lucide-react';
 
 // Helper function to calculate tenure
 function calculateTenure(startDate: string | null): string | null {
@@ -35,11 +35,43 @@ interface EmployeeNodeProps {
     employee: Employee;
     onEdit: () => void;
     onDelete: () => void;
+    hasReports?: boolean;
+    layoutDirection?: 'horizontal' | 'vertical';
+    onToggleLayout?: () => void;
+    groupColor?: string;
   };
 }
 
+// Generate consistent color for a group name
+function getGroupColor(groupName: string | null): string | null {
+  if (!groupName) return null;
+
+  const colors = [
+    '#3b82f6', // blue
+    '#8b5cf6', // purple
+    '#ec4899', // pink
+    '#f59e0b', // amber
+    '#10b981', // emerald
+    '#06b6d4', // cyan
+    '#f97316', // orange
+    '#14b8a6', // teal
+  ];
+
+  // Simple hash function to get consistent color for same name
+  let hash = 0;
+  for (let i = 0; i < groupName.length; i++) {
+    hash = groupName.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  return colors[Math.abs(hash) % colors.length];
+}
+
 function EmployeeNode({ data }: EmployeeNodeProps) {
-  const { employee, onEdit, onDelete } = data;
+  const { employee, onEdit, onDelete, hasReports, layoutDirection = 'horizontal', onToggleLayout, groupColor } = data;
+
+  // Determine which group to use for coloring (prioritize account_id over department)
+  const groupName = employee.account_id || employee.department;
+  const color = groupColor || getGroupColor(groupName);
 
   // Performance-based colors (takes priority if set)
   const performanceColors = {
@@ -84,10 +116,34 @@ function EmployeeNode({ data }: EmployeeNodeProps) {
       <div
         className={`
           w-48 rounded-lg border-2 border-dashed p-4 shadow-sm
-          transition-all hover:shadow-lg
+          transition-all hover:shadow-lg relative
           ${cardClass}
         `}
+        style={color ? {
+          borderLeftWidth: '6px',
+          borderLeftStyle: 'solid',
+          borderLeftColor: color,
+          boxShadow: `0 0 0 1px ${color}15`
+        } : undefined}
       >
+        {/* Layout toggle (if has reports) */}
+        {hasReports && onToggleLayout && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleLayout();
+            }}
+            className="absolute top-2 left-2 p-1 bg-white rounded shadow-sm hover:bg-gray-100 transition-colors z-10"
+            title={layoutDirection === 'horizontal' ? 'Switch to vertical layout' : 'Switch to horizontal layout'}
+          >
+            {layoutDirection === 'horizontal' ? (
+              <ArrowDownToLine className="w-3 h-3 text-gray-600" />
+            ) : (
+              <ArrowRightToLine className="w-3 h-3 text-gray-600" />
+            )}
+          </button>
+        )}
+
         {/* Status indicator */}
         <div className="absolute top-2 right-2">
           <div className={`w-2 h-2 rounded-full ${dotClass}`} title={employee.status} />
@@ -107,6 +163,21 @@ function EmployeeNode({ data }: EmployeeNodeProps) {
         {employee.department && (
           <div className="text-xs text-gray-500 mb-2 italic">
             {employee.department}
+          </div>
+        )}
+
+        {/* Client/Account Badge (if exists) */}
+        {employee.account_id && color && (
+          <div className="mb-2">
+            <div
+              className="text-[10px] px-2 py-0.5 rounded-full font-medium inline-block"
+              style={{
+                backgroundColor: `${color}20`,
+                color: color
+              }}
+            >
+              👥 {employee.account_id}
+            </div>
           </div>
         )}
 
