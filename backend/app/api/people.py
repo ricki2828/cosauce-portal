@@ -45,7 +45,7 @@ async def list_requisitions(
             query += " WHERE status = ?"
             params.append(status)
 
-        query += " ORDER BY created_at DESC"
+        query += " ORDER BY CASE WHEN target_start_date IS NULL THEN 1 ELSE 0 END, target_start_date ASC"
 
         async with db.execute(query, params) as cursor:
             rows = await cursor.fetchall()
@@ -737,10 +737,10 @@ async def get_new_hire_stats(
         async with db.execute("""
             SELECT
                 COUNT(*) as total,
-                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-                SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
-                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
-                SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled
+                COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) as pending,
+                COALESCE(SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END), 0) as active,
+                COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) as completed,
+                COALESCE(SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END), 0) as cancelled
             FROM team_members
         """) as cursor:
             row = await cursor.fetchone()
