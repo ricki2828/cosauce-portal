@@ -36,7 +36,8 @@ function buildFlowGraph(
   onEdit: (employee: Employee) => void,
   onDelete: (id: string) => void,
   layoutDirections: Map<string, 'horizontal' | 'vertical' | 'grouped'>,
-  onToggleLayout: (nodeId: string, currentLayout: 'horizontal' | 'vertical' | 'grouped') => void
+  onToggleLayout: (nodeId: string, currentLayout: 'horizontal' | 'vertical' | 'grouped') => void,
+  parentLayoutDirection: 'horizontal' | 'vertical' | 'grouped' = 'horizontal'
 ): { nodes: Node[]; edges: Edge[]; width: number; height: number } {
   const flowNodes: Node[] = [];
   const flowEdges: Edge[] = [];
@@ -97,11 +98,16 @@ function buildFlowGraph(
 
     // Create edge from parent
     if (parentId) {
+      // Use straight edges for vertically stacked children to avoid horizontal extension
+      const edgeType = (parentLayoutDirection === 'vertical' || parentLayoutDirection === 'grouped')
+        ? ConnectionLineType.Straight
+        : ConnectionLineType.SmoothStep;
+
       flowEdges.push({
         id: `${parentId}-${nodeId}`,
         source: parentId,
         target: nodeId,
-        type: ConnectionLineType.SmoothStep,
+        type: edgeType,
         style: { stroke: '#6b7280', strokeWidth: 2 },
         animated: false
       });
@@ -124,7 +130,8 @@ function buildFlowGraph(
             onEdit,
             onDelete,
             layoutDirections,
-            onToggleLayout
+            onToggleLayout,
+            'vertical'
           );
 
           // Adjust Y position ONLY for the direct child (first node)
@@ -202,7 +209,8 @@ function buildFlowGraph(
               onEdit,
               onDelete,
               layoutDirections,
-              onToggleLayout
+              onToggleLayout,
+              'grouped'
             );
 
             // Stack vertically within the group
@@ -243,7 +251,8 @@ function buildFlowGraph(
           onEdit,
           onDelete,
           layoutDirections,
-          onToggleLayout
+          onToggleLayout,
+          layoutDirection
         );
 
         flowNodes.push(...childGraph.nodes);
