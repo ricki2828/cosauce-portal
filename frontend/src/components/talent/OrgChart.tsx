@@ -123,11 +123,19 @@ function buildFlowGraph(
             onToggleLayout
           );
 
-          // Adjust Y positions for vertical stacking
-          childGraph.nodes.forEach(n => {
-            n.position.y = childY;
+          // Adjust Y position ONLY for the direct child (first node)
+          // Descendants maintain their relative positions
+          if (childGraph.nodes.length > 0) {
+            const directChildNode = childGraph.nodes[0];
+            const yOffset = childY - directChildNode.position.y;
+
+            // Apply offset to all nodes so they move together
+            childGraph.nodes.forEach(n => {
+              n.position.y += yOffset;
+            });
+
             childY += VERTICAL_SPACING;
-          });
+          }
 
           flowNodes.push(...childGraph.nodes);
           flowEdges.push(...childGraph.edges);
@@ -185,10 +193,19 @@ function buildFlowGraph(
             );
 
             // Stack vertically within the group
-            childGraph.nodes.forEach(n => {
-              n.position.y = childY;
-            });
-            childY += VERTICAL_SPACING;
+            // Adjust Y position ONLY for the direct child (first node)
+            // Descendants maintain their relative positions
+            if (childGraph.nodes.length > 0) {
+              const directChildNode = childGraph.nodes[0];
+              const yOffset = childY - directChildNode.position.y;
+
+              // Apply offset to all nodes so they move together
+              childGraph.nodes.forEach(n => {
+                n.position.y += yOffset;
+              });
+
+              childY += VERTICAL_SPACING;
+            }
 
             flowNodes.push(...childGraph.nodes);
             flowEdges.push(...childGraph.edges);
