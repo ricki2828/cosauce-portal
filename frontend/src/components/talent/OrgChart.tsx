@@ -113,6 +113,7 @@ function buildFlowGraph(
         // Vertical layout: stack children vertically at same X position
         let childY = (depth + 1) * VERTICAL_SPACING;
         let totalHeight = VERTICAL_SPACING; // Start with space for current node
+        let maxWidth = 0; // Track the widest child subtree
 
         node.reports.forEach((childNode, childIndex) => {
           const childGraph = buildFlowGraph(
@@ -140,6 +141,9 @@ function buildFlowGraph(
             // Move down by the full height of this subtree
             childY += childGraph.height;
             totalHeight += childGraph.height;
+
+            // Track the maximum width needed
+            maxWidth = Math.max(maxWidth, childGraph.width);
           }
 
           flowNodes.push(...childGraph.nodes);
@@ -147,7 +151,8 @@ function buildFlowGraph(
         });
 
         maxHeight = Math.max(maxHeight, totalHeight);
-        currentX += HORIZONTAL_SPACING;
+        // Use the maximum width of all stacked children, or minimum spacing
+        currentX += Math.max(maxWidth, HORIZONTAL_SPACING);
       } else if (layoutDirection === 'grouped') {
         // Grouped layout: create vertical columns grouped by client/department
         // Separate into clients and departments to keep them together
@@ -186,6 +191,7 @@ function buildFlowGraph(
           let groupX = currentX;
           let childY = (depth + 1) * VERTICAL_SPACING;
           let groupHeight = VERTICAL_SPACING; // Start with space for current node
+          let groupMaxWidth = 0; // Track the widest child in this group
 
           groupNodes.forEach((childNode) => {
             const childGraph = buildFlowGraph(
@@ -214,6 +220,9 @@ function buildFlowGraph(
               // Move down by the full height of this subtree
               childY += childGraph.height;
               groupHeight += childGraph.height;
+
+              // Track the maximum width needed in this group
+              groupMaxWidth = Math.max(groupMaxWidth, childGraph.width);
             }
 
             flowNodes.push(...childGraph.nodes);
@@ -221,8 +230,8 @@ function buildFlowGraph(
           });
 
           maxHeight = Math.max(maxHeight, groupHeight);
-          // Move to next column
-          currentX += HORIZONTAL_SPACING;
+          // Move to next column using the maximum width of this group
+          currentX += Math.max(groupMaxWidth, HORIZONTAL_SPACING);
         });
       } else {
         // Horizontal layout: spread children horizontally (original behavior)
