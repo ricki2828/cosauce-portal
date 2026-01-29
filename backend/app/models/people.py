@@ -184,7 +184,7 @@ class NewHireBase(BaseModel):
     email: Optional[EmailStr] = None
     role: str  # Maps to team_members.role (job title)
     department: Optional[str] = None
-    start_date: date
+    start_date: Optional[date] = None
     manager_id: Optional[str] = None
     onboarding_template_id: Optional[str] = None
 
