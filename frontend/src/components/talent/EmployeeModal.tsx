@@ -56,6 +56,7 @@ export default function EmployeeModal({
 
     try {
       // Clean up empty strings
+      // Keep performance/potential as empty strings to allow clearing ratings
       const data: any = {
         ...formData,
         email: formData.email || undefined,
@@ -63,8 +64,8 @@ export default function EmployeeModal({
         account_id: formData.account_id || undefined,
         manager_id: formData.manager_id || undefined,
         start_date: formData.start_date || undefined,
-        performance: formData.performance || undefined,
-        potential: formData.potential || undefined
+        performance: formData.performance === '' ? null : formData.performance,
+        potential: formData.potential === '' ? null : formData.potential
       };
 
       await onSave(data);

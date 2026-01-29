@@ -221,48 +221,23 @@ async def update_employee(
     existing = await get_employee(employee_id, current_user)
 
     # Build dynamic update query
+    # Use exclude_unset=True to only get fields that were explicitly provided
+    update_data = employee_update.dict(exclude_unset=True)
+
     updates = []
     params = []
 
-    if employee_update.name is not None:
-        updates.append("name = ?")
-        params.append(employee_update.name)
-    if employee_update.email is not None:
-        updates.append("email = ?")
-        params.append(employee_update.email)
-    if employee_update.role is not None:
-        updates.append("role = ?")
-        params.append(employee_update.role)
-    if employee_update.department is not None:
-        updates.append("department = ?")
-        params.append(employee_update.department)
-    if employee_update.account_id is not None:
-        updates.append("account_id = ?")
-        params.append(employee_update.account_id)
-    if employee_update.manager_id is not None:
-        # Prevent circular reference (employee can't be their own manager)
-        if employee_update.manager_id == employee_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Employee cannot be their own manager"
-            )
-        updates.append("manager_id = ?")
-        params.append(employee_update.manager_id)
-    if employee_update.status is not None:
-        updates.append("status = ?")
-        params.append(employee_update.status)
-    if employee_update.start_date is not None:
-        updates.append("start_date = ?")
-        params.append(employee_update.start_date)
-    if employee_update.performance is not None:
-        updates.append("performance = ?")
-        params.append(employee_update.performance)
-    if employee_update.potential is not None:
-        updates.append("potential = ?")
-        params.append(employee_update.potential)
-    if employee_update.layout_direction is not None:
-        updates.append("layout_direction = ?")
-        params.append(employee_update.layout_direction)
+    # Validate manager_id if provided
+    if 'manager_id' in update_data and update_data['manager_id'] == employee_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Employee cannot be their own manager"
+        )
+
+    # Build update query for all provided fields
+    for field, value in update_data.items():
+        updates.append(f"{field} = ?")
+        params.append(value)
 
     if not updates:
         raise HTTPException(
