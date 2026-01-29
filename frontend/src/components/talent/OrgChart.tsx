@@ -309,7 +309,13 @@ export default function OrgChart({ orgTree, onEdit, onDelete, onLayoutToggle }: 
     }
 
     const graph = buildFlowGraph(orgTree, 0, null, 0, onEdit, onDelete, layoutDirections, handleToggleLayout);
-    return graph;
+
+    // Deduplicate edges by ID (in case of any duplicates)
+    const uniqueEdges = Array.from(
+      new Map(graph.edges.map(edge => [edge.id, edge])).values()
+    );
+
+    return { nodes: graph.nodes, edges: uniqueEdges };
   }, [orgTree, onEdit, onDelete, layoutDirections, handleToggleLayout]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -349,12 +355,12 @@ export default function OrgChart({ orgTree, onEdit, onDelete, onLayoutToggle }: 
     );
   }
 
-  // Generate a key based on employee data to force re-render when performance changes
+  // Generate a key based on employee data to force re-render when performance or layout changes
   const graphKey = useMemo(() => {
     const flattenTree = (nodes: OrgNode[]): string[] => {
       const result: string[] = [];
       nodes.forEach(node => {
-        result.push(`${node.id}-${node.performance || 'null'}-${node.potential || 'null'}-${node.status}`);
+        result.push(`${node.id}-${node.performance || 'null'}-${node.potential || 'null'}-${node.status}-${node.layout_direction || 'horizontal'}`);
         if (node.reports && node.reports.length > 0) {
           result.push(...flattenTree(node.reports));
         }
