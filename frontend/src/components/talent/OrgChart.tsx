@@ -135,19 +135,39 @@ function buildFlowGraph(
         currentX += HORIZONTAL_SPACING;
       } else if (layoutDirection === 'grouped') {
         // Grouped layout: create vertical columns grouped by client/department
-        // Group children by account_id first, then department
-        const groups = new Map<string, OrgNode[]>();
+        // Separate into clients and departments to keep them together
+        const clientGroups = new Map<string, OrgNode[]>();
+        const departmentGroups = new Map<string, OrgNode[]>();
+        const otherNodes: OrgNode[] = [];
 
         node.reports.forEach(childNode => {
-          const groupKey = childNode.account_id || childNode.department || 'Other';
-          if (!groups.has(groupKey)) {
-            groups.set(groupKey, []);
+          if (childNode.account_id) {
+            // Has client - group by client
+            if (!clientGroups.has(childNode.account_id)) {
+              clientGroups.set(childNode.account_id, []);
+            }
+            clientGroups.get(childNode.account_id)!.push(childNode);
+          } else if (childNode.department) {
+            // Has department only - group by department
+            if (!departmentGroups.has(childNode.department)) {
+              departmentGroups.set(childNode.department, []);
+            }
+            departmentGroups.get(childNode.department)!.push(childNode);
+          } else {
+            // Neither client nor department
+            otherNodes.push(childNode);
           }
-          groups.get(groupKey)!.push(childNode);
         });
 
+        // Layout order: All clients first, then all departments, then other
+        const allGroups = [
+          ...Array.from(clientGroups.entries()).sort((a, b) => a[0].localeCompare(b[0])),
+          ...Array.from(departmentGroups.entries()).sort((a, b) => a[0].localeCompare(b[0])),
+          ...(otherNodes.length > 0 ? [['Other', otherNodes] as [string, OrgNode[]]] : [])
+        ];
+
         // Lay out each group as a vertical column
-        Array.from(groups.entries()).forEach(([groupKey, groupNodes]) => {
+        allGroups.forEach(([groupKey, groupNodes]) => {
           let groupX = currentX;
           let childY = (depth + 1) * VERTICAL_SPACING;
 
