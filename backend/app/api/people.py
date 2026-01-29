@@ -705,7 +705,7 @@ async def list_new_hires(
     status: Optional[str] = None,
     current_user = Depends(get_current_user)
 ):
-    """List all new hires"""
+    """List all new hires - excludes offboarded and onboarding statuses from Talent"""
     async with aiosqlite.connect(DATA_DIR / "portal.db") as db:
         db.row_factory = aiosqlite.Row
 
@@ -713,11 +713,12 @@ async def list_new_hires(
             SELECT id, name, email, role, department, start_date, manager_id,
                    onboarding_template_id, status, created_at, updated_at
             FROM team_members
+            WHERE status IN ('pending', 'active', 'completed', 'cancelled')
         """
         params = []
 
         if status:
-            query += " WHERE status = ?"
+            query += " AND status = ?"
             params.append(status)
 
         query += " ORDER BY start_date DESC"
@@ -742,6 +743,7 @@ async def get_new_hire_stats(
                 COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) as completed,
                 COALESCE(SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END), 0) as cancelled
             FROM team_members
+            WHERE status IN ('pending', 'active', 'completed', 'cancelled')
         """) as cursor:
             row = await cursor.fetchone()
             return dict(row)
