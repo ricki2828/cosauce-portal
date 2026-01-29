@@ -14,6 +14,7 @@ export interface Employee {
   start_date: string | null;  // ISO date string
   performance: 'Excellent' | 'High' | 'Good' | 'Low' | 'Very Low' | null;
   potential: 'Excellent' | 'High' | 'Good' | 'Low' | 'Very Low' | null;
+  layout_direction: 'horizontal' | 'vertical' | 'grouped';
   created_at: string;
   updated_at: string;
 }
@@ -39,6 +40,7 @@ export interface EmployeeCreate {
   start_date?: string;
   performance?: 'Excellent' | 'High' | 'Good' | 'Low' | 'Very Low';
   potential?: 'Excellent' | 'High' | 'Good' | 'Low' | 'Very Low';
+  layout_direction?: 'horizontal' | 'vertical' | 'grouped';
 }
 
 export interface EmployeeUpdate {
@@ -52,6 +54,7 @@ export interface EmployeeUpdate {
   start_date?: string;
   performance?: 'Excellent' | 'High' | 'Good' | 'Low' | 'Very Low';
   potential?: 'Excellent' | 'High' | 'Good' | 'Low' | 'Very Low';
+  layout_direction?: 'horizontal' | 'vertical' | 'grouped';
 }
 
 export interface TalentStats {

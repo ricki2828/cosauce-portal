@@ -133,6 +133,49 @@ function buildFlowGraph(
         });
 
         currentX += HORIZONTAL_SPACING;
+      } else if (layoutDirection === 'grouped') {
+        // Grouped layout: create vertical columns grouped by client/department
+        // Group children by account_id first, then department
+        const groups = new Map<string, OrgNode[]>();
+
+        node.reports.forEach(childNode => {
+          const groupKey = childNode.account_id || childNode.department || 'Other';
+          if (!groups.has(groupKey)) {
+            groups.set(groupKey, []);
+          }
+          groups.get(groupKey)!.push(childNode);
+        });
+
+        // Lay out each group as a vertical column
+        Array.from(groups.entries()).forEach(([groupKey, groupNodes]) => {
+          let groupX = currentX;
+          let childY = (depth + 1) * VERTICAL_SPACING;
+
+          groupNodes.forEach((childNode) => {
+            const childGraph = buildFlowGraph(
+              [childNode],
+              depth + 1,
+              nodeId,
+              groupX,
+              onEdit,
+              onDelete,
+              layoutDirections,
+              onToggleLayout
+            );
+
+            // Stack vertically within the group
+            childGraph.nodes.forEach(n => {
+              n.position.y = childY;
+            });
+            childY += VERTICAL_SPACING;
+
+            flowNodes.push(...childGraph.nodes);
+            flowEdges.push(...childGraph.edges);
+          });
+
+          // Move to next column
+          currentX += HORIZONTAL_SPACING;
+        });
       } else {
         // Horizontal layout: spread children horizontally (original behavior)
         const childGraph = buildFlowGraph(
@@ -165,18 +208,51 @@ function buildFlowGraph(
 }
 
 export default function OrgChart({ orgTree, onEdit, onDelete }: OrgChartProps) {
-  // Track layout direction for each node (horizontal by default)
-  const [layoutDirections, setLayoutDirections] = useState<Map<string, 'horizontal' | 'vertical'>>(new Map());
+  // Extract layout directions from employee data (comes from database)
+  const layoutDirections = useMemo(() => {
+    const map = new Map<string, 'horizontal' | 'vertical' | 'grouped'>();
 
-  // Toggle layout direction for a node
-  const handleToggleLayout = useCallback((nodeId: string) => {
-    setLayoutDirections(prev => {
-      const newMap = new Map(prev);
-      const current = newMap.get(nodeId) || 'horizontal';
-      newMap.set(nodeId, current === 'horizontal' ? 'vertical' : 'horizontal');
-      return newMap;
-    });
-  }, []);
+    const extractLayouts = (nodes: OrgNode[]) => {
+      nodes.forEach(node => {
+        map.set(node.id, node.layout_direction || 'horizontal');
+        if (node.reports && node.reports.length > 0) {
+          extractLayouts(node.reports);
+        }
+      });
+    };
+
+    extractLayouts(orgTree);
+    return map;
+  }, [orgTree]);
+
+  // Toggle layout direction for a node and save to database
+  const handleToggleLayout = useCallback(async (nodeId: string) => {
+    const current = layoutDirections.get(nodeId) || 'horizontal';
+    const next = current === 'horizontal' ? 'vertical' : current === 'vertical' ? 'grouped' : 'horizontal';
+
+    // Update via API
+    try {
+      const response = await fetch(`/api/talent/employees/${nodeId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ layout_direction: next })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update layout direction');
+      }
+
+      // Trigger reload by calling parent's edit handler (which reloads data)
+      // This is a bit of a hack but works with existing architecture
+      window.location.reload();
+    } catch (error) {
+      console.error('Error updating layout direction:', error);
+      alert('Failed to update layout direction');
+    }
+  }, [layoutDirections]);
 
   // Build ReactFlow graph
   const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {

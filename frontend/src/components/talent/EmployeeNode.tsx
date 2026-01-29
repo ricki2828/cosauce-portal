@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 import type { Employee } from '../../lib/talent-types';
-import { Mail, Edit2, Trash2, Calendar, MoveHorizontal, MoveVertical } from 'lucide-react';
+import { Mail, Edit2, Trash2, Calendar, MoveHorizontal, MoveVertical, Layers } from 'lucide-react';
 
 // Helper function to calculate tenure
 function calculateTenure(startDate: string | null): string | null {
@@ -36,7 +36,7 @@ interface EmployeeNodeProps {
     onEdit: () => void;
     onDelete: () => void;
     hasReports?: boolean;
-    layoutDirection?: 'horizontal' | 'vertical';
+    layoutDirection?: 'horizontal' | 'vertical' | 'grouped';
     onToggleLayout?: () => void;
     groupColor?: string;
   };
@@ -134,12 +134,20 @@ function EmployeeNode({ data }: EmployeeNodeProps) {
               onToggleLayout();
             }}
             className="absolute top-2 left-2 p-1.5 bg-white rounded-md shadow-sm hover:bg-blue-50 hover:shadow transition-all z-10 border border-gray-200"
-            title={layoutDirection === 'horizontal' ? 'Switch to vertical layout (stack reports)' : 'Switch to horizontal layout (spread reports)'}
+            title={
+              layoutDirection === 'horizontal'
+                ? 'Click to stack vertically'
+                : layoutDirection === 'vertical'
+                ? 'Click to group by dept/client'
+                : 'Click to spread horizontally'
+            }
           >
             {layoutDirection === 'horizontal' ? (
+              <MoveHorizontal className="w-3.5 h-3.5 text-blue-600" />
+            ) : layoutDirection === 'vertical' ? (
               <MoveVertical className="w-3.5 h-3.5 text-blue-600" />
             ) : (
-              <MoveHorizontal className="w-3.5 h-3.5 text-blue-600" />
+              <Layers className="w-3.5 h-3.5 text-blue-600" />
             )}
           </button>
         )}

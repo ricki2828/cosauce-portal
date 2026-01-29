@@ -174,8 +174,8 @@ async def create_employee(
             await db.execute(
                 """
                 INSERT INTO team_members
-                (id, name, email, role, department, account_id, manager_id, status, start_date, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (id, name, email, role, department, account_id, manager_id, status, start_date, performance, potential, layout_direction, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     employee_id,
@@ -187,6 +187,9 @@ async def create_employee(
                     employee.manager_id,
                     employee.status,
                     employee.start_date,
+                    employee.performance,
+                    employee.potential,
+                    employee.layout_direction or 'horizontal',
                     now,
                     now
                 )
@@ -251,6 +254,15 @@ async def update_employee(
     if employee_update.start_date is not None:
         updates.append("start_date = ?")
         params.append(employee_update.start_date)
+    if employee_update.performance is not None:
+        updates.append("performance = ?")
+        params.append(employee_update.performance)
+    if employee_update.potential is not None:
+        updates.append("potential = ?")
+        params.append(employee_update.potential)
+    if employee_update.layout_direction is not None:
+        updates.append("layout_direction = ?")
+        params.append(employee_update.layout_direction)
 
     if not updates:
         raise HTTPException(

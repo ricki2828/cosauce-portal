@@ -22,6 +22,7 @@ class EmployeeBase(BaseModel):
     start_date: Optional[str] = None  # ISO date string
     performance: Optional[Literal['Excellent', 'High', 'Good', 'Low', 'Very Low']] = None
     potential: Optional[Literal['Excellent', 'High', 'Good', 'Low', 'Very Low']] = None
+    layout_direction: Optional[Literal['horizontal', 'vertical', 'grouped']] = 'horizontal'
 
 
 class EmployeeCreate(EmployeeBase):
@@ -41,6 +42,7 @@ class EmployeeUpdate(BaseModel):
     start_date: Optional[str] = None
     performance: Optional[Literal['Excellent', 'High', 'Good', 'Low', 'Very Low']] = None
     potential: Optional[Literal['Excellent', 'High', 'Good', 'Low', 'Very Low']] = None
+    layout_direction: Optional[Literal['horizontal', 'vertical', 'grouped']] = None
 
 
 class Employee(EmployeeBase):
