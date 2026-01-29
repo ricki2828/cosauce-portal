@@ -44,7 +44,36 @@ function buildFlowGraph(
 
   let currentX = xOffset;
 
-  nodes.forEach((node, index) => {
+  // Sort nodes by client (account_id) first, then department, then name
+  // This keeps employees from the same team/client grouped together
+  const sortedNodes = [...nodes].sort((a, b) => {
+    // Prioritize grouping by client (account_id)
+    if (a.account_id && b.account_id) {
+      if (a.account_id !== b.account_id) {
+        return a.account_id.localeCompare(b.account_id);
+      }
+    } else if (a.account_id && !b.account_id) {
+      return -1;
+    } else if (!a.account_id && b.account_id) {
+      return 1;
+    }
+
+    // Then group by department
+    if (a.department && b.department) {
+      if (a.department !== b.department) {
+        return a.department.localeCompare(b.department);
+      }
+    } else if (a.department && !b.department) {
+      return -1;
+    } else if (!a.department && b.department) {
+      return 1;
+    }
+
+    // Finally sort by name
+    return a.name.localeCompare(b.name);
+  });
+
+  sortedNodes.forEach((node, index) => {
     // Create node
     const nodeId = node.id;
     const hasReports = node.reports && node.reports.length > 0;
@@ -196,9 +225,25 @@ export default function OrgChart({ orgTree, onEdit, onDelete }: OrgChartProps) {
     );
   }
 
+  // Generate a key based on employee data to force re-render when performance changes
+  const graphKey = useMemo(() => {
+    const flattenTree = (nodes: OrgNode[]): string[] => {
+      const result: string[] = [];
+      nodes.forEach(node => {
+        result.push(`${node.id}-${node.performance || 'null'}-${node.potential || 'null'}-${node.status}`);
+        if (node.reports && node.reports.length > 0) {
+          result.push(...flattenTree(node.reports));
+        }
+      });
+      return result;
+    };
+    return flattenTree(orgTree).join('_');
+  }, [orgTree]);
+
   return (
     <div className="w-full h-full bg-gray-50">
       <ReactFlow
+        key={graphKey}
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
