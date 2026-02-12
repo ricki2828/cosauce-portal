@@ -9,6 +9,7 @@ import type {
 } from '../../lib/talent-types';
 import EmployeeDot from './EmployeeDot';
 import MatrixLegend from './MatrixLegend';
+import ColorSettings from './ColorSettings';
 
 interface TalentMatrixProps {
   employees: Employee[];
@@ -42,14 +43,26 @@ export default function TalentMatrix({ employees, onEmployeeEdit }: TalentMatrix
   const [searchParams, setSearchParams] = useSearchParams();
   const [accounts, setAccounts] = useState<AccountCampaignType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showColorSettings, setShowColorSettings] = useState(false);
+  const [colorVersion, setColorVersion] = useState(0); // Force re-render when colors change
 
-  // Get role filters from URL params (persisted across navigation)
+  // Get filters from URL params (persisted across navigation)
   const roleFilters = useMemo(() => {
     const roles = searchParams.get('roles');
     return roles ? roles.split(',').filter(Boolean) : [];
   }, [searchParams]);
 
-  // Update role filters in URL
+  const clientFilters = useMemo(() => {
+    const clients = searchParams.get('clients');
+    return clients ? clients.split(',').filter(Boolean) : [];
+  }, [searchParams]);
+
+  const departmentFilters = useMemo(() => {
+    const departments = searchParams.get('departments');
+    return departments ? departments.split(',').filter(Boolean) : [];
+  }, [searchParams]);
+
+  // Update filters in URL
   const setRoleFilters = useCallback((roles: string[]) => {
     setSearchParams(prev => {
       const newParams = new URLSearchParams(prev);
@@ -57,6 +70,30 @@ export default function TalentMatrix({ employees, onEmployeeEdit }: TalentMatrix
         newParams.set('roles', roles.join(','));
       } else {
         newParams.delete('roles');
+      }
+      return newParams;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const setClientFilters = useCallback((clients: string[]) => {
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      if (clients.length > 0) {
+        newParams.set('clients', clients.join(','));
+      } else {
+        newParams.delete('clients');
+      }
+      return newParams;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const setDepartmentFilters = useCallback((departments: string[]) => {
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      if (departments.length > 0) {
+        newParams.set('departments', departments.join(','));
+      } else {
+        newParams.delete('departments');
       }
       return newParams;
     }, { replace: true });
@@ -80,8 +117,20 @@ export default function TalentMatrix({ employees, onEmployeeEdit }: TalentMatrix
   // Filter employees and calculate positions
   const { filteredEmployees, quadrantCounts } = useMemo(() => {
     let filtered = employees;
+
+    // Apply role filter
     if (roleFilters.length > 0) {
       filtered = filtered.filter((e) => roleFilters.includes(e.role));
+    }
+
+    // Apply client filter
+    if (clientFilters.length > 0) {
+      filtered = filtered.filter((e) => e.account_id && clientFilters.includes(e.account_id));
+    }
+
+    // Apply department filter
+    if (departmentFilters.length > 0) {
+      filtered = filtered.filter((e) => e.department && departmentFilters.includes(e.department));
     }
 
     // Count by quadrant
@@ -100,7 +149,7 @@ export default function TalentMatrix({ employees, onEmployeeEdit }: TalentMatrix
     });
 
     return { filteredEmployees: filtered, quadrantCounts: counts };
-  }, [employees, roleFilters]);
+  }, [employees, roleFilters, clientFilters, departmentFilters]);
 
   // Add small random offset to prevent exact overlaps
   const getOffset = (id: string, axis: 'x' | 'y'): number => {
@@ -232,7 +281,7 @@ export default function TalentMatrix({ employees, onEmployeeEdit }: TalentMatrix
 
                   return (
                     <div
-                      key={emp.id}
+                      key={`${emp.id}-${colorVersion}`}
                       className="absolute flex items-center gap-1 group"
                       style={{
                         left: `${x}%`,
@@ -332,12 +381,27 @@ export default function TalentMatrix({ employees, onEmployeeEdit }: TalentMatrix
       {/* Legend Sidebar */}
       <div className="w-72 flex-shrink-0">
         <MatrixLegend
-          employees={employees}
+          employees={filteredEmployees}
           accounts={accounts}
           roleFilters={roleFilters}
           onRoleFiltersChange={setRoleFilters}
+          clientFilters={clientFilters}
+          onClientFiltersChange={setClientFilters}
+          departmentFilters={departmentFilters}
+          onDepartmentFiltersChange={setDepartmentFilters}
+          onOpenColorSettings={() => setShowColorSettings(true)}
         />
       </div>
+
+      {/* Color Settings Modal */}
+      {showColorSettings && (
+        <ColorSettings
+          accounts={accounts}
+          employees={employees}
+          onClose={() => setShowColorSettings(false)}
+          onColorsChange={() => setColorVersion(v => v + 1)}
+        />
+      )}
     </div>
   );
 }

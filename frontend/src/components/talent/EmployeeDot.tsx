@@ -1,26 +1,6 @@
 import React, { useState } from 'react';
 import type { Employee } from '../../lib/talent-types';
-
-// Generate consistent color for a group name (same as in GroupLegend)
-function getGroupColor(groupName: string): string {
-  const colors = [
-    '#3b82f6', // blue
-    '#8b5cf6', // purple
-    '#ec4899', // pink
-    '#f59e0b', // amber
-    '#10b981', // emerald
-    '#06b6d4', // cyan
-    '#f97316', // orange
-    '#14b8a6', // teal
-  ];
-
-  let hash = 0;
-  for (let i = 0; i < groupName.length; i++) {
-    hash = groupName.charCodeAt(i) + ((hash << 5) - hash);
-  }
-
-  return colors[Math.abs(hash) % colors.length];
-}
+import { getGroupColor } from './ColorSettings';
 
 interface EmployeeDotProps {
   employee: Employee;
@@ -80,5 +60,3 @@ export default function EmployeeDot({ employee, onClick, size = 'md', hasPartial
     </div>
   );
 }
-
-export { getGroupColor };

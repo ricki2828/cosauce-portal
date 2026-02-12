@@ -7,3 +7,4 @@ export { default as GroupLegend } from './GroupLegend';
 export { default as TalentMatrix } from './TalentMatrix';
 export { default as MatrixLegend } from './MatrixLegend';
 export { default as EmployeeDot } from './EmployeeDot';
+export { default as ColorSettings, getGroupColor } from './ColorSettings';

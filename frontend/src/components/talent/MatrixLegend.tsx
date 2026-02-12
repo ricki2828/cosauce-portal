@@ -1,6 +1,7 @@
 import React from 'react';
+import { Settings } from 'lucide-react';
 import type { AccountCampaignType, Employee } from '../../lib/talent-types';
-import { getGroupColor } from './EmployeeDot';
+import { getGroupColor } from './ColorSettings';
 import MultiSelect from './MultiSelect';
 
 interface MatrixLegendProps {
@@ -8,6 +9,11 @@ interface MatrixLegendProps {
   accounts: AccountCampaignType[];
   roleFilters: string[];
   onRoleFiltersChange: (roles: string[]) => void;
+  clientFilters: string[];
+  onClientFiltersChange: (clients: string[]) => void;
+  departmentFilters: string[];
+  onDepartmentFiltersChange: (departments: string[]) => void;
+  onOpenColorSettings: () => void;
 }
 
 export default function MatrixLegend({
@@ -15,9 +21,16 @@ export default function MatrixLegend({
   accounts,
   roleFilters,
   onRoleFiltersChange,
+  clientFilters,
+  onClientFiltersChange,
+  departmentFilters,
+  onDepartmentFiltersChange,
+  onOpenColorSettings,
 }: MatrixLegendProps) {
-  // Get unique roles from employees
+  // Get unique values from employees
   const uniqueRoles = [...new Set(employees.map((e) => e.role))].sort();
+  const uniqueDepartments = [...new Set(employees.map((e) => e.department).filter(Boolean))] as string[];
+  const uniqueClients = [...new Set(employees.map((e) => e.account_id).filter(Boolean))] as string[];
 
   // Group accounts by campaign type
   const salesAccounts = accounts.filter((a) => a.campaign_type === 'sales');
@@ -35,6 +48,12 @@ export default function MatrixLegend({
     (e) => (e.performance && !e.potential) || (!e.performance && e.potential)
   ).length;
   const unrated = employees.filter((e) => !e.performance && !e.potential).length;
+
+  // Get account name by ID
+  const getAccountName = (id: string) => {
+    const account = accounts.find(a => a.id === id);
+    return account?.name || id;
+  };
 
   const renderAccountBadge = (account: AccountCampaignType) => {
     const color = getGroupColor(account.id);
@@ -59,15 +78,53 @@ export default function MatrixLegend({
 
   return (
     <div className="bg-white border rounded-lg p-4 space-y-4">
-      {/* Role Filter */}
+      {/* Filters Section */}
       <div>
-        <label className="block text-xs font-semibold text-gray-600 mb-2">Filter by Role</label>
-        <MultiSelect
-          options={uniqueRoles.map((role) => ({ value: role, label: role }))}
-          selected={roleFilters}
-          onChange={onRoleFiltersChange}
-          placeholder="All Roles"
-        />
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-xs font-semibold text-gray-600">Filters</h4>
+          <button
+            onClick={onOpenColorSettings}
+            className="text-gray-400 hover:text-gray-600 p-1"
+            title="Color Settings"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Role Filter */}
+        <div className="mb-3">
+          <label className="block text-xs text-gray-500 mb-1">Role</label>
+          <MultiSelect
+            options={uniqueRoles.map((role) => ({ value: role, label: role }))}
+            selected={roleFilters}
+            onChange={onRoleFiltersChange}
+            placeholder="All Roles"
+          />
+        </div>
+
+        {/* Client Filter */}
+        <div className="mb-3">
+          <label className="block text-xs text-gray-500 mb-1">Client</label>
+          <MultiSelect
+            options={uniqueClients.map((id) => ({ value: id, label: getAccountName(id) }))}
+            selected={clientFilters}
+            onChange={onClientFiltersChange}
+            placeholder="All Clients"
+          />
+        </div>
+
+        {/* Department Filter */}
+        {uniqueDepartments.length > 0 && (
+          <div className="mb-3">
+            <label className="block text-xs text-gray-500 mb-1">Department</label>
+            <MultiSelect
+              options={uniqueDepartments.sort().map((dept) => ({ value: dept, label: dept }))}
+              selected={departmentFilters}
+              onChange={onDepartmentFiltersChange}
+              placeholder="All Departments"
+            />
+          </div>
+        )}
       </div>
 
       {/* Rating Status Summary */}
