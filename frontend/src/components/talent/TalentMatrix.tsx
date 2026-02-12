@@ -3,66 +3,43 @@ import { talentApi } from '../../lib/api';
 import type {
   Employee,
   AccountCampaignType,
-  QuadrantType,
   PerformanceRating,
   PotentialRating,
-  getQuadrant,
-  ratingToPercent,
 } from '../../lib/talent-types';
 import EmployeeDot from './EmployeeDot';
 import MatrixLegend from './MatrixLegend';
-
-// Import the helper functions from talent-types
-import { getQuadrant as getQuadrantFn, ratingToPercent as ratingToPercentMap } from '../../lib/talent-types';
 
 interface TalentMatrixProps {
   employees: Employee[];
   onEmployeeEdit: (employee: Employee) => void;
 }
 
-interface QuadrantInfo {
-  id: QuadrantType;
-  title: string;
-  subtitle: string;
-  color: string;
-  bgColor: string;
+// Map ratings to percentage position (0-100)
+// Missing rating = 50 (middle)
+const ratingToPercent: Record<string, number> = {
+  'Excellent': 90,
+  'High': 75,
+  'Good': 50,
+  'Low': 25,
+  'Very Low': 10,
+};
+
+function getPosition(rating: PerformanceRating | PotentialRating | null): number {
+  if (!rating) return 50; // Middle if no rating
+  return ratingToPercent[rating] ?? 50;
 }
 
-const quadrants: QuadrantInfo[] = [
-  {
-    id: 'high-potentials',
-    title: 'High Potentials',
-    subtitle: 'Develop Performance',
-    color: 'text-blue-700',
-    bgColor: 'bg-blue-50',
-  },
-  {
-    id: 'stars',
-    title: 'Stars',
-    subtitle: 'Retain & Reward',
-    color: 'text-green-700',
-    bgColor: 'bg-green-50',
-  },
-  {
-    id: 'underperformers',
-    title: 'Underperformers',
-    subtitle: 'Coach or Exit',
-    color: 'text-red-700',
-    bgColor: 'bg-red-50',
-  },
-  {
-    id: 'core-players',
-    title: 'Core Players',
-    subtitle: 'Develop Potential',
-    color: 'text-amber-700',
-    bgColor: 'bg-amber-50',
-  },
-];
+// Determine which quadrant based on position
+function getQuadrantFromPosition(perfPercent: number, potPercent: number): string {
+  if (perfPercent >= 50 && potPercent >= 50) return 'stars';
+  if (perfPercent < 50 && potPercent >= 50) return 'high-potentials';
+  if (perfPercent >= 50 && potPercent < 50) return 'core-players';
+  return 'underperformers';
+}
 
 export default function TalentMatrix({ employees, onEmployeeEdit }: TalentMatrixProps) {
   const [accounts, setAccounts] = useState<AccountCampaignType[]>([]);
   const [roleFilters, setRoleFilters] = useState<string[]>([]);
-  const [showUnrated, setShowUnrated] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Load accounts with campaign types
@@ -80,89 +57,40 @@ export default function TalentMatrix({ employees, onEmployeeEdit }: TalentMatrix
     loadAccounts();
   }, []);
 
-  // Filter and categorize employees
-  const { ratedEmployees, unratedEmployees, employeesByQuadrant } = useMemo(() => {
-    // Apply role filter
+  // Filter employees and calculate positions
+  const { filteredEmployees, quadrantCounts } = useMemo(() => {
     let filtered = employees;
     if (roleFilters.length > 0) {
       filtered = filtered.filter((e) => roleFilters.includes(e.role));
     }
 
-    // Separate rated and unrated
-    const rated = filtered.filter((e) => e.performance && e.potential);
-    const unrated = filtered.filter((e) => !e.performance || !e.potential);
-
-    // Group by quadrant
-    const byQuadrant: Record<QuadrantType, Employee[]> = {
-      stars: [],
-      'high-potentials': [],
-      'core-players': [],
-      underperformers: [],
+    // Count by quadrant
+    const counts = {
+      stars: 0,
+      'high-potentials': 0,
+      'core-players': 0,
+      underperformers: 0,
     };
 
-    rated.forEach((emp) => {
-      const quadrant = getQuadrantFn(emp.performance, emp.potential);
-      if (quadrant) {
-        byQuadrant[quadrant].push(emp);
-      }
+    filtered.forEach((emp) => {
+      const perfPercent = getPosition(emp.performance);
+      const potPercent = getPosition(emp.potential);
+      const quadrant = getQuadrantFromPosition(perfPercent, potPercent);
+      counts[quadrant as keyof typeof counts]++;
     });
 
-    return {
-      ratedEmployees: rated,
-      unratedEmployees: unrated,
-      employeesByQuadrant: byQuadrant,
-    };
+    return { filteredEmployees: filtered, quadrantCounts: counts };
   }, [employees, roleFilters]);
 
-  // Calculate position within quadrant based on exact rating
-  const getPositionInQuadrant = (
-    performance: PerformanceRating,
-    potential: PotentialRating,
-    quadrant: QuadrantType
-  ): { x: number; y: number } => {
-    const perfPercent = ratingToPercentMap[performance];
-    const potPercent = ratingToPercentMap[potential];
-
-    // Map to quadrant-relative position
-    // Stars (top-right): high perf, high pot
-    // High Potentials (top-left): low perf, high pot
-    // Core Players (bottom-right): high perf, low pot
-    // Underperformers (bottom-left): low perf, low pot
-
-    let x: number, y: number;
-
-    switch (quadrant) {
-      case 'stars':
-        // High performance (65-85) maps to 10-90% of quadrant width
-        // High potential (65-85) maps to 10-90% of quadrant height (inverted for CSS)
-        x = ((perfPercent - 65) / 20) * 80 + 10;
-        y = 90 - ((potPercent - 65) / 20) * 80;
-        break;
-      case 'high-potentials':
-        // Low performance (15-50) maps to 10-90% of quadrant width
-        // High potential (65-85) maps to 10-90% of quadrant height
-        x = ((perfPercent - 15) / 35) * 80 + 10;
-        y = 90 - ((potPercent - 65) / 20) * 80;
-        break;
-      case 'core-players':
-        // High performance (65-85) maps to 10-90%
-        // Low potential (15-50) maps to 10-90%
-        x = ((perfPercent - 65) / 20) * 80 + 10;
-        y = 90 - ((potPercent - 15) / 35) * 80;
-        break;
-      case 'underperformers':
-        // Low performance (15-50) maps to 10-90%
-        // Low potential (15-50) maps to 10-90%
-        x = ((perfPercent - 15) / 35) * 80 + 10;
-        y = 90 - ((potPercent - 15) / 35) * 80;
-        break;
+  // Add small random offset to prevent exact overlaps
+  const getOffset = (id: string, axis: 'x' | 'y'): number => {
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+      hash = id.charCodeAt(i) + ((hash << 5) - hash);
     }
-
-    // Clamp values
-    x = Math.max(5, Math.min(95, x));
-    y = Math.max(5, Math.min(95, y));
-
-    return { x, y };
+    // Different seed for x vs y
+    if (axis === 'y') hash = hash * 31;
+    return ((hash % 100) / 100) * 6 - 3; // -3 to +3 percent offset
   };
 
   if (loading) {
@@ -177,11 +105,11 @@ export default function TalentMatrix({ employees, onEmployeeEdit }: TalentMatrix
     <div className="flex gap-6">
       {/* Main Matrix */}
       <div className="flex-1">
-        {/* Y-axis label */}
         <div className="flex">
+          {/* Y-axis label */}
           <div className="w-8 flex items-center justify-center">
             <span
-              className="text-xs font-semibold text-gray-500 transform -rotate-90 whitespace-nowrap"
+              className="text-xs font-semibold text-gray-500 whitespace-nowrap"
               style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
             >
               POTENTIAL
@@ -189,99 +117,184 @@ export default function TalentMatrix({ employees, onEmployeeEdit }: TalentMatrix
           </div>
 
           <div className="flex-1">
-            {/* Matrix Grid */}
-            <div className="grid grid-cols-2 gap-1 aspect-square max-w-2xl">
-              {quadrants.map((quadrant) => {
-                const quadrantEmployees = employeesByQuadrant[quadrant.id];
-                return (
-                  <div
-                    key={quadrant.id}
-                    className={`relative ${quadrant.bgColor} rounded-lg border-2 border-gray-200 p-3 min-h-[200px]`}
-                  >
-                    {/* Quadrant Header */}
-                    <div className="absolute top-2 left-2 right-2">
-                      <h3 className={`text-sm font-bold ${quadrant.color}`}>{quadrant.title}</h3>
-                      <p className="text-xs text-gray-500">{quadrant.subtitle}</p>
-                    </div>
+            {/* Y-axis markers */}
+            <div className="flex mb-1">
+              <div className="w-12" />
+              <div className="flex-1 flex justify-between text-xs text-gray-400 max-w-2xl">
+                <span></span>
+                <span>High</span>
+              </div>
+            </div>
 
-                    {/* Count Badge */}
-                    <div className="absolute top-2 right-2 bg-white rounded-full px-2 py-0.5 text-xs font-semibold text-gray-600 shadow-sm">
-                      {quadrantEmployees.length}
-                    </div>
+            {/* Matrix Container */}
+            <div className="flex">
+              {/* Y-axis scale */}
+              <div className="w-12 flex flex-col justify-between text-xs text-gray-400 pr-2">
+                <span>100</span>
+                <span>75</span>
+                <span>50</span>
+                <span>25</span>
+                <span>0</span>
+              </div>
 
-                    {/* Employee Dots */}
-                    <div className="absolute inset-0 mt-12 mb-2 mx-2">
-                      {quadrantEmployees.map((emp) => {
-                        const pos = getPositionInQuadrant(
-                          emp.performance!,
-                          emp.potential!,
-                          quadrant.id
-                        );
-                        return (
-                          <div
-                            key={emp.id}
-                            className="absolute"
-                            style={{
-                              left: `${pos.x}%`,
-                              top: `${pos.y}%`,
-                              transform: 'translate(-50%, -50%)',
-                            }}
-                          >
-                            <EmployeeDot employee={emp} onClick={() => onEmployeeEdit(emp)} />
-                          </div>
-                        );
-                      })}
+              {/* The Matrix Grid */}
+              <div className="relative aspect-square max-w-2xl w-full border-2 border-gray-300 rounded-lg overflow-hidden">
+                {/* Quadrant Backgrounds */}
+                <div className="absolute inset-0 grid grid-cols-2 grid-rows-2">
+                  {/* Top-left: High Potentials */}
+                  <div className="bg-blue-50 border-r border-b border-gray-200 relative">
+                    <div className="absolute top-2 left-2">
+                      <h3 className="text-xs font-bold text-blue-700">High Potentials</h3>
+                      <p className="text-[10px] text-gray-500">Develop Performance</p>
+                    </div>
+                    <div className="absolute top-2 right-2 bg-white/80 rounded-full px-1.5 py-0.5 text-[10px] font-semibold text-gray-600">
+                      {quadrantCounts['high-potentials']}
                     </div>
                   </div>
-                );
-              })}
+                  {/* Top-right: Stars */}
+                  <div className="bg-green-50 border-b border-gray-200 relative">
+                    <div className="absolute top-2 left-2">
+                      <h3 className="text-xs font-bold text-green-700">Stars</h3>
+                      <p className="text-[10px] text-gray-500">Retain & Reward</p>
+                    </div>
+                    <div className="absolute top-2 right-2 bg-white/80 rounded-full px-1.5 py-0.5 text-[10px] font-semibold text-gray-600">
+                      {quadrantCounts['stars']}
+                    </div>
+                  </div>
+                  {/* Bottom-left: Underperformers */}
+                  <div className="bg-red-50 border-r border-gray-200 relative">
+                    <div className="absolute bottom-2 left-2">
+                      <h3 className="text-xs font-bold text-red-700">Underperformers</h3>
+                      <p className="text-[10px] text-gray-500">Coach or Exit</p>
+                    </div>
+                    <div className="absolute top-2 right-2 bg-white/80 rounded-full px-1.5 py-0.5 text-[10px] font-semibold text-gray-600">
+                      {quadrantCounts['underperformers']}
+                    </div>
+                  </div>
+                  {/* Bottom-right: Core Players */}
+                  <div className="bg-amber-50 relative">
+                    <div className="absolute bottom-2 left-2">
+                      <h3 className="text-xs font-bold text-amber-700">Core Players</h3>
+                      <p className="text-[10px] text-gray-500">Develop Potential</p>
+                    </div>
+                    <div className="absolute top-2 right-2 bg-white/80 rounded-full px-1.5 py-0.5 text-[10px] font-semibold text-gray-600">
+                      {quadrantCounts['core-players']}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Center crosshair lines */}
+                <div className="absolute inset-0 pointer-events-none">
+                  <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gray-300" />
+                  <div className="absolute top-1/2 left-0 right-0 h-px bg-gray-300" />
+                </div>
+
+                {/* Employee Dots */}
+                {filteredEmployees.map((emp) => {
+                  const perfPercent = getPosition(emp.performance);
+                  const potPercent = getPosition(emp.potential);
+
+                  // Add slight offset to prevent exact overlaps
+                  const xOffset = getOffset(emp.id, 'x');
+                  const yOffset = getOffset(emp.id, 'y');
+
+                  // X: 0% = left (low perf), 100% = right (high perf)
+                  // Y: 0% = top (high pot), 100% = bottom (low pot) - inverted for CSS
+                  const x = Math.max(3, Math.min(97, perfPercent + xOffset));
+                  const y = Math.max(3, Math.min(97, 100 - potPercent + yOffset));
+
+                  // Determine if this employee has partial ratings
+                  const hasPartialRating = !emp.performance || !emp.potential;
+                  const hasNoRating = !emp.performance && !emp.potential;
+
+                  return (
+                    <div
+                      key={emp.id}
+                      className="absolute"
+                      style={{
+                        left: `${x}%`,
+                        top: `${y}%`,
+                        transform: 'translate(-50%, -50%)',
+                        zIndex: hasNoRating ? 1 : hasPartialRating ? 5 : 10,
+                      }}
+                    >
+                      <EmployeeDot
+                        employee={emp}
+                        onClick={() => onEmployeeEdit(emp)}
+                        size={hasNoRating ? 'sm' : hasPartialRating ? 'md' : 'lg'}
+                        hasPartialRating={hasPartialRating}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* X-axis markers */}
+            <div className="flex mt-1">
+              <div className="w-12" />
+              <div className="flex-1 flex justify-between text-xs text-gray-400 max-w-2xl px-1">
+                <span>0</span>
+                <span>25</span>
+                <span>50</span>
+                <span>75</span>
+                <span>100</span>
+              </div>
             </div>
 
             {/* X-axis label */}
-            <div className="text-center mt-2">
-              <span className="text-xs font-semibold text-gray-500">PERFORMANCE</span>
+            <div className="flex mt-1">
+              <div className="w-12" />
+              <div className="flex-1 text-center">
+                <span className="text-xs font-semibold text-gray-500">PERFORMANCE</span>
+              </div>
             </div>
 
             {/* Axis indicators */}
-            <div className="flex justify-between text-xs text-gray-400 mt-1 max-w-2xl">
-              <span>Low</span>
-              <span>High</span>
+            <div className="flex mt-1">
+              <div className="w-12" />
+              <div className="flex-1 flex justify-between text-xs text-gray-400 max-w-2xl">
+                <span>Low</span>
+                <span>High</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Unrated Employees Section */}
-        {showUnrated && unratedEmployees.length > 0 && (
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
-            <h4 className="text-sm font-semibold text-gray-600 mb-3">
-              Unrated Employees ({unratedEmployees.length})
-            </h4>
-            <div className="flex flex-wrap gap-3">
-              {unratedEmployees.map((emp) => (
-                <button
-                  key={emp.id}
-                  onClick={() => onEmployeeEdit(emp)}
-                  className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg border hover:shadow-md transition-shadow text-sm"
-                >
-                  <span className="w-3 h-3 rounded-full bg-gray-300" />
-                  <span className="font-medium">{emp.name}</span>
-                  <span className="text-gray-500">{emp.role}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Summary Stats */}
-        <div className="mt-6 grid grid-cols-4 gap-4">
-          {quadrants.map((quadrant) => (
-            <div key={quadrant.id} className={`${quadrant.bgColor} rounded-lg p-3 text-center`}>
-              <div className={`text-2xl font-bold ${quadrant.color}`}>
-                {employeesByQuadrant[quadrant.id].length}
-              </div>
-              <div className="text-xs text-gray-600">{quadrant.title}</div>
-            </div>
-          ))}
+        <div className="mt-6 grid grid-cols-4 gap-4 max-w-2xl ml-12">
+          <div className="bg-green-50 rounded-lg p-3 text-center border border-green-200">
+            <div className="text-2xl font-bold text-green-700">{quadrantCounts['stars']}</div>
+            <div className="text-xs text-gray-600">Stars</div>
+          </div>
+          <div className="bg-blue-50 rounded-lg p-3 text-center border border-blue-200">
+            <div className="text-2xl font-bold text-blue-700">{quadrantCounts['high-potentials']}</div>
+            <div className="text-xs text-gray-600">High Potentials</div>
+          </div>
+          <div className="bg-amber-50 rounded-lg p-3 text-center border border-amber-200">
+            <div className="text-2xl font-bold text-amber-700">{quadrantCounts['core-players']}</div>
+            <div className="text-xs text-gray-600">Core Players</div>
+          </div>
+          <div className="bg-red-50 rounded-lg p-3 text-center border border-red-200">
+            <div className="text-2xl font-bold text-red-700">{quadrantCounts['underperformers']}</div>
+            <div className="text-xs text-gray-600">Underperformers</div>
+          </div>
+        </div>
+
+        {/* Legend for dot sizes */}
+        <div className="mt-4 ml-12 flex items-center gap-6 text-xs text-gray-500">
+          <div className="flex items-center gap-2">
+            <span className="w-5 h-5 rounded-full bg-gray-400 border-2 border-white shadow-sm" />
+            <span>Both ratings</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-4 h-4 rounded-full bg-gray-400 border-2 border-white shadow-sm opacity-70" />
+            <span>One rating (other = middle)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full bg-gray-400 border-2 border-white shadow-sm opacity-50" />
+            <span>No ratings (center)</span>
+          </div>
         </div>
       </div>
 
@@ -292,8 +305,6 @@ export default function TalentMatrix({ employees, onEmployeeEdit }: TalentMatrix
           accounts={accounts}
           roleFilters={roleFilters}
           onRoleFiltersChange={setRoleFilters}
-          showUnrated={showUnrated}
-          onShowUnratedChange={setShowUnrated}
         />
       </div>
     </div>

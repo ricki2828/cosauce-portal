@@ -8,8 +8,6 @@ interface MatrixLegendProps {
   accounts: AccountCampaignType[];
   roleFilters: string[];
   onRoleFiltersChange: (roles: string[]) => void;
-  showUnrated: boolean;
-  onShowUnratedChange: (show: boolean) => void;
 }
 
 export default function MatrixLegend({
@@ -17,8 +15,6 @@ export default function MatrixLegend({
   accounts,
   roleFilters,
   onRoleFiltersChange,
-  showUnrated,
-  onShowUnratedChange,
 }: MatrixLegendProps) {
   // Get unique roles from employees
   const uniqueRoles = [...new Set(employees.map((e) => e.role))].sort();
@@ -32,6 +28,13 @@ export default function MatrixLegend({
 
   // Get accounts that have employees assigned
   const activeAccountIds = new Set(employees.map((e) => e.account_id).filter(Boolean));
+
+  // Count ratings status
+  const fullyRated = employees.filter((e) => e.performance && e.potential).length;
+  const partiallyRated = employees.filter(
+    (e) => (e.performance && !e.potential) || (!e.performance && e.potential)
+  ).length;
+  const unrated = employees.filter((e) => !e.performance && !e.potential).length;
 
   const renderAccountBadge = (account: AccountCampaignType) => {
     const color = getGroupColor(account.id);
@@ -67,18 +70,27 @@ export default function MatrixLegend({
         />
       </div>
 
-      {/* Show Unrated Toggle */}
-      <div className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          id="show-unrated"
-          checked={showUnrated}
-          onChange={(e) => onShowUnratedChange(e.target.checked)}
-          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-        />
-        <label htmlFor="show-unrated" className="text-sm text-gray-600">
-          Show employees without ratings
-        </label>
+      {/* Rating Status Summary */}
+      <div className="border-t pt-4">
+        <h4 className="text-xs font-semibold text-gray-600 mb-2">Rating Status</h4>
+        <div className="space-y-1 text-xs">
+          <div className="flex justify-between">
+            <span className="text-gray-600">Fully rated</span>
+            <span className="font-medium text-green-600">{fullyRated}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Partially rated</span>
+            <span className="font-medium text-amber-600">{partiallyRated}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Not rated</span>
+            <span className="font-medium text-gray-500">{unrated}</span>
+          </div>
+          <div className="flex justify-between border-t pt-1 mt-1">
+            <span className="text-gray-700 font-medium">Total</span>
+            <span className="font-bold">{employees.length}</span>
+          </div>
+        </div>
       </div>
 
       {/* Client Colors by Category */}
@@ -122,22 +134,22 @@ export default function MatrixLegend({
       {/* Quadrant Key */}
       <div className="border-t pt-4">
         <h4 className="text-xs font-semibold text-gray-600 mb-2">Quadrant Key</h4>
-        <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="grid grid-cols-1 gap-2 text-xs">
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded bg-green-500" />
-            <span className="text-gray-600">Stars (Retain & Reward)</span>
+            <span className="text-gray-600">Stars - Retain & Reward</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded bg-blue-500" />
-            <span className="text-gray-600">High Potentials (Develop)</span>
+            <span className="text-gray-600">High Potentials - Develop Perf</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded bg-amber-500" />
-            <span className="text-gray-600">Core Players (Maintain)</span>
+            <span className="text-gray-600">Core Players - Develop Potential</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded bg-red-400" />
-            <span className="text-gray-600">Underperformers (Coach)</span>
+            <span className="text-gray-600">Underperformers - Coach/Exit</span>
           </div>
         </div>
       </div>

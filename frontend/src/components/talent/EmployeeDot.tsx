@@ -26,9 +26,10 @@ interface EmployeeDotProps {
   employee: Employee;
   onClick: () => void;
   size?: 'sm' | 'md' | 'lg';
+  hasPartialRating?: boolean;
 }
 
-export default function EmployeeDot({ employee, onClick, size = 'md' }: EmployeeDotProps) {
+export default function EmployeeDot({ employee, onClick, size = 'md', hasPartialRating = false }: EmployeeDotProps) {
   const [showTooltip, setShowTooltip] = useState(false);
 
   const color = employee.account_id ? getGroupColor(employee.account_id) : '#6b7280';
@@ -39,13 +40,18 @@ export default function EmployeeDot({ employee, onClick, size = 'md' }: Employee
     lg: 'w-5 h-5',
   };
 
+  // Determine if employee has no ratings at all
+  const hasNoRating = !employee.performance && !employee.potential;
+
   return (
     <div className="relative">
       <button
         onClick={onClick}
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
-        className={`${sizeClasses[size]} rounded-full border-2 border-white shadow-sm cursor-pointer transition-all hover:scale-125 hover:shadow-md hover:z-10`}
+        className={`${sizeClasses[size]} rounded-full border-2 border-white shadow-sm cursor-pointer transition-all hover:scale-125 hover:shadow-md hover:z-10 ${
+          hasNoRating ? 'opacity-50' : hasPartialRating ? 'opacity-70' : ''
+        }`}
         style={{ backgroundColor: color }}
         aria-label={`${employee.name} - ${employee.role}`}
       />
@@ -59,9 +65,14 @@ export default function EmployeeDot({ employee, onClick, size = 'md' }: Employee
             <div className="text-gray-400 mt-1">Client: {employee.account_id}</div>
           )}
           <div className="flex gap-3 mt-1 text-gray-400">
-            <span>Perf: {employee.performance || 'N/A'}</span>
-            <span>Pot: {employee.potential || 'N/A'}</span>
+            <span>Perf: {employee.performance || <span className="italic">Not rated</span>}</span>
+            <span>Pot: {employee.potential || <span className="italic">Not rated</span>}</span>
           </div>
+          {(hasNoRating || hasPartialRating) && (
+            <div className="text-yellow-400 mt-1 text-[10px]">
+              {hasNoRating ? 'Click to add ratings' : 'Missing one rating'}
+            </div>
+          )}
           {/* Tooltip arrow */}
           <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
         </div>
