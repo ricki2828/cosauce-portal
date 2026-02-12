@@ -9,3 +9,6 @@ export { NewHireMiniCard } from './NewHireMiniCard';
 export { SalesPipelineCard } from './SalesPipelineCard';
 export { SalesPipelineKanban } from './SalesPipelineKanban';
 export { default as AddCommentModal } from './AddCommentModal';
+export { InvoicingSection } from './InvoicingSection';
+export { InvoiceCard } from './InvoiceCard';
+export { InvoiceDetailModal } from './InvoiceDetailModal';

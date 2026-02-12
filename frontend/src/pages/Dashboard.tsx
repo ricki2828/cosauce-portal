@@ -9,7 +9,8 @@ import {
   KPICards,
   RequisitionMiniCard,
   NewHireMiniCard,
-  SalesPipelineKanban
+  SalesPipelineKanban,
+  InvoicingSection
 } from '../components/dashboard';
 import { OpportunityModal } from '../components/dashboard/OpportunityModal';
 
@@ -306,6 +307,9 @@ export function Dashboard() {
           onCommentAdded={loadOpportunities}
         />
       </DashboardSection>
+
+      {/* Section 5: Invoicing */}
+      <InvoicingSection />
 
       {/* Opportunity Modal */}
       <OpportunityModal

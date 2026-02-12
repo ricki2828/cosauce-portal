@@ -189,7 +189,7 @@ export default function TalentMatrix({ employees, onEmployeeEdit }: TalentMatrix
                   <div className="absolute top-1/2 left-0 right-0 h-px bg-gray-300" />
                 </div>
 
-                {/* Employee Dots */}
+                {/* Employee Dots with Labels */}
                 {filteredEmployees.map((emp) => {
                   const perfPercent = getPosition(emp.performance);
                   const potPercent = getPosition(emp.potential);
@@ -207,10 +207,13 @@ export default function TalentMatrix({ employees, onEmployeeEdit }: TalentMatrix
                   const hasPartialRating = !emp.performance || !emp.potential;
                   const hasNoRating = !emp.performance && !emp.potential;
 
+                  // Get first name or short name for label
+                  const shortName = emp.name.split(' ')[0];
+
                   return (
                     <div
                       key={emp.id}
-                      className="absolute"
+                      className="absolute flex items-center gap-1 group"
                       style={{
                         left: `${x}%`,
                         top: `${y}%`,
@@ -224,6 +227,14 @@ export default function TalentMatrix({ employees, onEmployeeEdit }: TalentMatrix
                         size={hasNoRating ? 'sm' : hasPartialRating ? 'md' : 'lg'}
                         hasPartialRating={hasPartialRating}
                       />
+                      <button
+                        onClick={() => onEmployeeEdit(emp)}
+                        className={`text-[9px] font-medium whitespace-nowrap bg-white/90 px-1 rounded shadow-sm hover:bg-white hover:shadow cursor-pointer ${
+                          hasNoRating ? 'text-gray-400' : hasPartialRating ? 'text-gray-500' : 'text-gray-700'
+                        }`}
+                      >
+                        {shortName}
+                      </button>
                     </div>
                   );
                 })}
