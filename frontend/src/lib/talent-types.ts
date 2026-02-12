@@ -65,3 +65,45 @@ export interface TalentStats {
   offboarded: number;
   by_department: Record<string, number>;
 }
+
+// ============================================
+// Talent Matrix Types
+// ============================================
+
+export type QuadrantType = 'stars' | 'high-potentials' | 'core-players' | 'underperformers';
+
+export type CampaignType = 'sales' | 'service' | 'appointment_setting' | 'processing' | null;
+
+export interface AccountCampaignType {
+  id: string;
+  name: string;
+  campaign_type: CampaignType;
+}
+
+export type PerformanceRating = 'Excellent' | 'High' | 'Good' | 'Low' | 'Very Low';
+export type PotentialRating = 'Excellent' | 'High' | 'Good' | 'Low' | 'Very Low';
+
+// Helper function to determine quadrant from ratings
+export function getQuadrant(
+  performance: PerformanceRating | null,
+  potential: PotentialRating | null
+): QuadrantType | null {
+  if (!performance || !potential) return null;
+
+  const highPerformance = ['Excellent', 'High'].includes(performance);
+  const highPotential = ['Excellent', 'High'].includes(potential);
+
+  if (highPerformance && highPotential) return 'stars';
+  if (!highPerformance && highPotential) return 'high-potentials';
+  if (highPerformance && !highPotential) return 'core-players';
+  return 'underperformers';
+}
+
+// Rating to percentage position (for positioning within quadrant)
+export const ratingToPercent: Record<PerformanceRating | PotentialRating, number> = {
+  'Excellent': 85,
+  'High': 65,
+  'Good': 50,
+  'Low': 35,
+  'Very Low': 15,
+};

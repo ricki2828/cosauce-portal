@@ -85,3 +85,14 @@ class TalentStats(BaseModel):
     onboarding: int
     offboarded: int
     by_department: dict[str, int] = {}
+
+
+# ============================================
+# Account Campaign Type Models (for Talent Matrix)
+# ============================================
+
+class AccountCampaignType(BaseModel):
+    """Account with campaign type for Sales/Service grouping"""
+    id: str
+    name: str
+    campaign_type: Optional[Literal['sales', 'service', 'appointment_setting', 'processing']] = None

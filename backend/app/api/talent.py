@@ -11,7 +11,7 @@ from ..config import DATA_DIR
 from ..middleware.auth import get_current_user
 from ..models.talent import (
     EmployeeCreate, EmployeeUpdate, Employee, EmployeeWithReports,
-    OrgNode, Department, TalentStats
+    OrgNode, Department, TalentStats, AccountCampaignType
 )
 
 router = APIRouter()
@@ -396,3 +396,36 @@ async def get_talent_stats(
             stats['by_department'] = {row['department']: row['count'] for row in dept_rows}
 
         return stats
+
+
+# ============================================
+# Account Campaign Types Endpoints (for Talent Matrix)
+# ============================================
+
+@router.get("/accounts-campaign-types", response_model=List[AccountCampaignType])
+async def get_accounts_campaign_types(
+    current_user = Depends(get_current_user)
+):
+    """
+    Get all accounts with their campaign types for Sales/Service grouping in Talent Matrix.
+    Returns accounts from bu_accounts joined with bu_account_config.
+    Only directors and admins can access this endpoint.
+    """
+    check_director_or_admin(current_user)
+
+    async with aiosqlite.connect(DATA_DIR / "portal.db") as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """
+            SELECT
+                a.id,
+                a.name,
+                c.campaign_type
+            FROM bu_accounts a
+            LEFT JOIN bu_account_config c ON a.id = c.account_id
+            WHERE a.is_active = 1
+            ORDER BY a.name
+            """
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]

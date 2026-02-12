@@ -10,7 +10,8 @@ import type {
   TeamLeaderProfile, DirectSubmitRequest
 } from './business-updates-types';
 import type {
-  Employee, OrgNode, Department, EmployeeCreate, EmployeeUpdate, TalentStats
+  Employee, OrgNode, Department, EmployeeCreate, EmployeeUpdate, TalentStats,
+  AccountCampaignType
 } from './talent-types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://91.98.79.241:8004';
@@ -1102,4 +1103,152 @@ export const talentApi = {
   // Get org chart statistics
   getStats: () =>
     api.get<TalentStats>('/api/talent/stats'),
+
+  // Get accounts with campaign types for Talent Matrix
+  getAccountsCampaignTypes: () =>
+    api.get<AccountCampaignType[]>('/api/talent/accounts-campaign-types'),
+};
+
+// ==================== INVOICING API ====================
+
+export type InvoiceStatus =
+  | 'gathering_data'
+  | 'checking'
+  | 'sent'
+  | 'approved'
+  | 'paid'
+  | 'blocked';
+
+export interface InvoiceRole {
+  id: string;
+  invoice_id: string;
+  role_name: string;
+  rate: number;
+  quantity: number;
+  total: number;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InvoiceRoleCreate {
+  role_name: string;
+  rate?: number;
+  quantity?: number;
+  sort_order?: number;
+}
+
+export interface InvoiceRoleUpdate {
+  role_name?: string;
+  rate?: number;
+  quantity?: number;
+  sort_order?: number;
+}
+
+export interface InvoiceComment {
+  id: string;
+  invoice_id: string;
+  author_id: string | null;
+  author_name: string;
+  content: string;
+  created_at: string;
+}
+
+export interface InvoiceCommentCreate {
+  content: string;
+}
+
+export interface Invoice {
+  id: string;
+  client_name: string;
+  period_month: number;
+  period_year: number;
+  status: InvoiceStatus;
+  currency: string;
+  notes: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  roles: InvoiceRole[];
+  comments: InvoiceComment[];
+  total: number;
+}
+
+export interface InvoiceCreate {
+  client_name: string;
+  period_month: number;
+  period_year: number;
+  currency?: string;
+  notes?: string;
+}
+
+export interface InvoiceUpdate {
+  status?: InvoiceStatus;
+  currency?: string;
+  notes?: string;
+}
+
+export interface InvoicePeriod {
+  month: number;
+  year: number;
+  invoice_count: number;
+}
+
+export interface RolloverResult {
+  invoices_created: number;
+  to_month: number;
+  to_year: number;
+}
+
+export const invoicingApi = {
+  // Get all invoices for a period
+  getInvoices: (month: number, year: number) =>
+    api.get<Invoice[]>('/api/invoicing/invoices', { params: { month, year } }),
+
+  // Get single invoice
+  getInvoice: (id: string) =>
+    api.get<Invoice>(`/api/invoicing/invoices/${id}`),
+
+  // Create invoice
+  createInvoice: (data: InvoiceCreate) =>
+    api.post<Invoice>('/api/invoicing/invoices', data),
+
+  // Update invoice
+  updateInvoice: (id: string, data: InvoiceUpdate) =>
+    api.put<Invoice>(`/api/invoicing/invoices/${id}`, data),
+
+  // Delete invoice
+  deleteInvoice: (id: string) =>
+    api.delete(`/api/invoicing/invoices/${id}`),
+
+  // Add role/line item
+  addRole: (invoiceId: string, data: InvoiceRoleCreate) =>
+    api.post<InvoiceRole>(`/api/invoicing/invoices/${invoiceId}/roles`, data),
+
+  // Update role
+  updateRole: (invoiceId: string, roleId: string, data: InvoiceRoleUpdate) =>
+    api.put<InvoiceRole>(`/api/invoicing/invoices/${invoiceId}/roles/${roleId}`, data),
+
+  // Delete role
+  deleteRole: (invoiceId: string, roleId: string) =>
+    api.delete(`/api/invoicing/invoices/${invoiceId}/roles/${roleId}`),
+
+  // Add comment
+  addComment: (invoiceId: string, data: InvoiceCommentCreate) =>
+    api.post<InvoiceComment>(`/api/invoicing/invoices/${invoiceId}/comments`, data),
+
+  // Roll invoices to next month
+  rollover: (fromMonth: number, fromYear: number) =>
+    api.post<RolloverResult>('/api/invoicing/invoices/rollover', {
+      from_month: fromMonth,
+      from_year: fromYear,
+    }),
+
+  // Get list of periods with invoices
+  getPeriods: () =>
+    api.get<InvoicePeriod[]>('/api/invoicing/periods'),
+
+  // Get list of unique client names
+  getClients: () =>
+    api.get<string[]>('/api/invoicing/clients'),
 };

@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { talentApi } from '../lib/api';
 import type { OrgNode, Employee } from '../lib/talent-types';
-import { Plus, Loader2 } from 'lucide-react';
-import { OrgChart, EmployeeModal, FilterBar, GroupLegend } from '../components/talent';
+import { Plus, Loader2, Network, Grid3X3 } from 'lucide-react';
+import { OrgChart, EmployeeModal, FilterBar, GroupLegend, TalentMatrix } from '../components/talent';
+
+type TabType = 'org-chart' | 'talent-matrix';
 
 export function Talent() {
+  const [activeTab, setActiveTab] = useState<TabType>('org-chart');
   const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -13,7 +16,7 @@ export function Talent() {
   const [showModal, setShowModal] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
 
-  // Filter state
+  // Filter state (for org chart)
   const [statusFilter, setStatusFilter] = useState<string>('active');
   const [roleFilters, setRoleFilters] = useState<string[]>([]);
   const [departmentFilters, setDepartmentFilters] = useState<string[]>([]);
@@ -141,7 +144,7 @@ export function Talent() {
       <div className="flex items-center justify-center h-screen">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-          <p className="text-gray-500">Loading org chart...</p>
+          <p className="text-gray-500">Loading talent data...</p>
         </div>
       </div>
     );
@@ -151,7 +154,7 @@ export function Talent() {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
-          <h3 className="text-red-900 font-semibold mb-2">Error Loading Org Chart</h3>
+          <h3 className="text-red-900 font-semibold mb-2">Error Loading Data</h3>
           <p className="text-red-700 text-sm">{error}</p>
           <button
             onClick={loadData}
@@ -167,50 +170,92 @@ export function Talent() {
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b px-6 py-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Talent Org Chart</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {filteredEmployees.length} of {allEmployees.length} {statusFilter || 'total'} employee{allEmployees.length !== 1 ? 's' : ''}
-          </p>
+      <div className="bg-white border-b px-6 py-4">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Talent</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              {filteredEmployees.length} of {allEmployees.length} {statusFilter || 'total'} employee{allEmployees.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowModal(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add Person
+            </button>
+          </div>
         </div>
 
-        <div className="flex gap-3">
+        {/* Tab Navigation */}
+        <div className="flex gap-1 border-b -mb-4">
           <button
-            onClick={() => setShowModal(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            onClick={() => setActiveTab('org-chart')}
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'org-chart'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
           >
-            <Plus className="w-4 h-4" />
-            Add Person
+            <Network className="w-4 h-4" />
+            Org Chart
+          </button>
+          <button
+            onClick={() => setActiveTab('talent-matrix')}
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'talent-matrix'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <Grid3X3 className="w-4 h-4" />
+            Talent Matrix
           </button>
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <FilterBar
-        allEmployees={allEmployees}
-        statusFilter={statusFilter}
-        roleFilters={roleFilters}
-        departmentFilters={departmentFilters}
-        clientFilters={clientFilters}
-        onStatusChange={setStatusFilter}
-        onRoleFiltersChange={setRoleFilters}
-        onDepartmentFiltersChange={setDepartmentFilters}
-        onClientFiltersChange={setClientFilters}
-      />
+      {/* Tab Content */}
+      {activeTab === 'org-chart' && (
+        <>
+          {/* Filter Bar */}
+          <FilterBar
+            allEmployees={allEmployees}
+            statusFilter={statusFilter}
+            roleFilters={roleFilters}
+            departmentFilters={departmentFilters}
+            clientFilters={clientFilters}
+            onStatusChange={setStatusFilter}
+            onRoleFiltersChange={setRoleFilters}
+            onDepartmentFiltersChange={setDepartmentFilters}
+            onClientFiltersChange={setClientFilters}
+          />
 
-      {/* Group Legend */}
-      <GroupLegend employees={filteredEmployees} />
+          {/* Group Legend */}
+          <GroupLegend employees={filteredEmployees} />
 
-      {/* Org Chart */}
-      <div className="flex-1 overflow-hidden">
-        <OrgChart
-          orgTree={orgTree}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onLayoutToggle={handleLayoutToggle}
-        />
-      </div>
+          {/* Org Chart */}
+          <div className="flex-1 overflow-hidden">
+            <OrgChart
+              orgTree={orgTree}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onLayoutToggle={handleLayoutToggle}
+            />
+          </div>
+        </>
+      )}
+
+      {activeTab === 'talent-matrix' && (
+        <div className="flex-1 overflow-auto p-6">
+          <TalentMatrix
+            employees={allEmployees}
+            onEmployeeEdit={handleEdit}
+          />
+        </div>
+      )}
 
       {/* Employee Modal */}
       {showModal && (
