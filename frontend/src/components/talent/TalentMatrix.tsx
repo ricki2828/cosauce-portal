@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { talentApi } from '../../lib/api';
 import type {
   Employee,
@@ -38,9 +39,28 @@ function getQuadrantFromPosition(perfPercent: number, potPercent: number): strin
 }
 
 export default function TalentMatrix({ employees, onEmployeeEdit }: TalentMatrixProps) {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [accounts, setAccounts] = useState<AccountCampaignType[]>([]);
-  const [roleFilters, setRoleFilters] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Get role filters from URL params (persisted across navigation)
+  const roleFilters = useMemo(() => {
+    const roles = searchParams.get('roles');
+    return roles ? roles.split(',').filter(Boolean) : [];
+  }, [searchParams]);
+
+  // Update role filters in URL
+  const setRoleFilters = useCallback((roles: string[]) => {
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      if (roles.length > 0) {
+        newParams.set('roles', roles.join(','));
+      } else {
+        newParams.delete('roles');
+      }
+      return newParams;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   // Load accounts with campaign types
   useEffect(() => {
