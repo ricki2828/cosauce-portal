@@ -1,16 +1,16 @@
 import { useState } from 'react';
 import type { Requisition } from '../../lib/api';
 import { Users, MapPin, Calendar, MessageSquarePlus } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { peopleApi } from '../../lib/api';
 import AddCommentModal from './AddCommentModal';
 
 interface RequisitionMiniCardProps {
   requisition: Requisition;
   onCommentAdded?: () => void;
+  onEdit?: (requisition: Requisition) => void;
 }
 
-export function RequisitionMiniCard({ requisition, onCommentAdded }: RequisitionMiniCardProps) {
+export function RequisitionMiniCard({ requisition, onCommentAdded, onEdit }: RequisitionMiniCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const statusColors = {
     open: 'bg-green-100 text-green-800',
@@ -33,16 +33,21 @@ export function RequisitionMiniCard({ requisition, onCommentAdded }: Requisition
   };
 
   const handleCommentClick = (e: React.MouseEvent) => {
-    e.preventDefault();
     e.stopPropagation();
     setIsModalOpen(true);
   };
 
+  const handleCardClick = () => {
+    if (onEdit) {
+      onEdit(requisition);
+    }
+  };
+
   return (
     <>
-    <Link
-      to={`/people?tab=requisitions&edit=${requisition.id}`}
-      className="block bg-white rounded-lg border border-gray-200 p-3 hover:border-gray-300 hover:shadow-sm transition-all"
+    <div
+      onClick={handleCardClick}
+      className="block bg-white rounded-lg border border-gray-200 p-3 hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer"
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-2 mb-3">
@@ -136,7 +141,7 @@ export function RequisitionMiniCard({ requisition, onCommentAdded }: Requisition
           Add comment
         </button>
       </div>
-    </Link>
+    </div>
 
     {/* Add Comment Modal */}
     <AddCommentModal

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Flag, BarChart3, Users, TrendingUp, Plus } from 'lucide-react';
 import { prioritiesApi, peopleApi, pipelineApi } from '../lib/api';
-import type { Requisition, RequisitionStats, NewHire, PipelineOpportunity, PipelineOpportunityCreate, PipelineOpportunityUpdate } from '../lib/api';
+import type { Requisition, RequisitionUpdate, RequisitionStats, NewHire, PipelineOpportunity, PipelineOpportunityCreate, PipelineOpportunityUpdate } from '../lib/api';
 import type { Priority } from '../lib/priorities-types';
 import {
   DashboardSection,
@@ -13,6 +13,7 @@ import {
   InvoicingSection
 } from '../components/dashboard';
 import { OpportunityModal } from '../components/dashboard/OpportunityModal';
+import { EditRequisitionModal } from '../components/people/EditRequisitionModal';
 
 export function Dashboard() {
   // Priorities state
@@ -41,6 +42,9 @@ export function Dashboard() {
   // Opportunity modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedOpportunity, setSelectedOpportunity] = useState<PipelineOpportunity | undefined>(undefined);
+
+  // Requisition edit modal state
+  const [editingRequisition, setEditingRequisition] = useState<Requisition | null>(null);
 
   // Shift update state - no longer needed with KPICards
   // Removed: commentary functionality replaced by KPICards component
@@ -160,8 +164,21 @@ export function Dashboard() {
     }
   };
 
-  // Load recent shift update for commentary - REMOVED
-  // This functionality is no longer needed with KPICards component
+  // Handle requisition edit
+  const handleEditRequisition = (requisition: Requisition) => {
+    setEditingRequisition(requisition);
+  };
+
+  const handleUpdateRequisition = async (data: RequisitionUpdate) => {
+    if (!editingRequisition) return;
+    try {
+      await peopleApi.updateRequisition(editingRequisition.id, data);
+      setEditingRequisition(null);
+      await loadRequisitions();
+    } catch (error) {
+      console.error('Failed to update requisition:', error);
+    }
+  };
 
   useEffect(() => {
     loadPriorities();
@@ -262,7 +279,7 @@ export function Dashboard() {
               <h4 className="text-sm font-medium text-gray-700 mb-3">Active Requisitions</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {requisitions.map((req) => (
-                  <RequisitionMiniCard key={req.id} requisition={req} onCommentAdded={loadRequisitions} />
+                  <RequisitionMiniCard key={req.id} requisition={req} onCommentAdded={loadRequisitions} onEdit={handleEditRequisition} />
                 ))}
               </div>
             </div>
@@ -318,6 +335,15 @@ export function Dashboard() {
         onSave={handleSaveOpportunity}
         opportunity={selectedOpportunity}
       />
+
+      {/* Edit Requisition Modal */}
+      {editingRequisition && (
+        <EditRequisitionModal
+          requisition={editingRequisition}
+          onClose={() => setEditingRequisition(null)}
+          onSubmit={handleUpdateRequisition}
+        />
+      )}
     </div>
   );
 }
