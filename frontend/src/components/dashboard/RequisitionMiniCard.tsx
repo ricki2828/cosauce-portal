@@ -41,7 +41,7 @@ export function RequisitionMiniCard({ requisition, onCommentAdded }: Requisition
   return (
     <>
     <Link
-      to="/people"
+      to={`/people?tab=requisitions&edit=${requisition.id}`}
       className="block bg-white rounded-lg border border-gray-200 p-3 hover:border-gray-300 hover:shadow-sm transition-all"
     >
       {/* Header */}

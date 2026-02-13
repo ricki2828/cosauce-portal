@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Users, Briefcase, ClipboardList, Plus, Calendar, CheckCircle, X, MessageSquare, Trash2, Edit2, Settings } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { peopleApi } from '../lib/api';
 import type {
   Requisition,
@@ -19,7 +20,10 @@ type TabType = 'requisitions' | 'onboarding' | 'templates';
 
 export function People() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<TabType>('onboarding');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab') as TabType | null;
+  const editParam = searchParams.get('edit');
+  const [activeTab, setActiveTab] = useState<TabType>(tabParam && ['requisitions', 'onboarding', 'templates'].includes(tabParam) ? tabParam : 'onboarding');
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
   const [requisitionStats, setRequisitionStats] = useState<RequisitionStats | null>(null);
   const [newHires, setNewHires] = useState<NewHire[]>([]);
@@ -33,6 +37,27 @@ export function People() {
   const [showCreateTemplateModal, setShowCreateTemplateModal] = useState(false);
   const [showChecklistModal, setShowChecklistModal] = useState(false);
   const [selectedHire, setSelectedHire] = useState<NewHire | null>(null);
+
+  // Sync tab from URL params
+  useEffect(() => {
+    if (tabParam && ['requisitions', 'onboarding', 'templates'].includes(tabParam) && tabParam !== activeTab) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
+
+  // Auto-open edit modal when navigating with ?edit=<id>
+  useEffect(() => {
+    if (editParam && activeTab === 'requisitions' && requisitions.length > 0 && !showEditReqModal) {
+      const req = requisitions.find(r => r.id === editParam);
+      if (req) {
+        setSelectedRequisition(req);
+        setShowEditReqModal(true);
+        // Clear the edit param from URL so refreshing doesn't re-open
+        searchParams.delete('edit');
+        setSearchParams(searchParams, { replace: true });
+      }
+    }
+  }, [editParam, requisitions, activeTab]);
 
   useEffect(() => {
     loadData();
