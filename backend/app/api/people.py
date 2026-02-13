@@ -94,7 +94,13 @@ async def list_requisitions(
 async def get_requisition_stats(
     current_user = Depends(get_current_user)
 ):
-    """Get requisition statistics - counts positions/roles, not requisition records"""
+    """Get requisition statistics - counts positions/roles, not requisition records.
+
+    Filled count only includes roles filled within the last 7 days.
+    """
+    # Calculate date 7 days ago for filled filter
+    seven_days_ago = (datetime.utcnow() - timedelta(days=7)).isoformat()
+
     async with aiosqlite.connect(DATA_DIR / "portal.db") as db:
         db.row_factory = aiosqlite.Row
 
@@ -104,11 +110,11 @@ async def get_requisition_stats(
                 COALESCE(SUM(CASE WHEN r.status = 'open' THEN (rr.requested_count - rr.filled_count) ELSE 0 END), 0) as open,
                 COALESCE(SUM(CASE WHEN r.status = 'interviewing' THEN (rr.requested_count - rr.filled_count) ELSE 0 END), 0) as interviewing,
                 COALESCE(SUM(CASE WHEN r.status = 'offer_made' THEN (rr.requested_count - rr.filled_count) ELSE 0 END), 0) as offer_made,
-                COALESCE(SUM(rr.filled_count), 0) as filled,
+                COALESCE(SUM(CASE WHEN rr.last_filled_at >= ? THEN rr.filled_count ELSE 0 END), 0) as filled,
                 COALESCE(SUM(CASE WHEN r.status = 'cancelled' THEN rr.requested_count ELSE 0 END), 0) as cancelled
             FROM requisitions r
             LEFT JOIN requisition_roles rr ON r.id = rr.requisition_id
-        """) as cursor:
+        """, (seven_days_ago,)) as cursor:
             row = await cursor.fetchone()
             return dict(row)
 
@@ -426,9 +432,9 @@ async def increment_role_filled(
     async with aiosqlite.connect(DATA_DIR / "portal.db") as db:
         await db.execute("""
             UPDATE requisition_roles
-            SET filled_count = filled_count + ?, updated_at = ?
+            SET filled_count = filled_count + ?, updated_at = ?, last_filled_at = ?
             WHERE id = ?
-        """, (count, now, role_id))
+        """, (count, now, now, role_id))
 
         # Update requisition timestamp
         await db.execute("""
