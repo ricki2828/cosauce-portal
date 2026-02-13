@@ -106,7 +106,9 @@ async def get_requisition_stats(
 
         async with db.execute("""
             SELECT
-                COALESCE(SUM(rr.requested_count), 0) as total,
+                -- Total = open + interviewing + offer_made + recent filled (excludes old filled and cancelled)
+                COALESCE(SUM(CASE WHEN r.status IN ('open', 'interviewing', 'offer_made') THEN (rr.requested_count - rr.filled_count) ELSE 0 END), 0) +
+                COALESCE(SUM(CASE WHEN rr.last_filled_at >= ? THEN rr.filled_count ELSE 0 END), 0) as total,
                 COALESCE(SUM(CASE WHEN r.status = 'open' THEN (rr.requested_count - rr.filled_count) ELSE 0 END), 0) as open,
                 COALESCE(SUM(CASE WHEN r.status = 'interviewing' THEN (rr.requested_count - rr.filled_count) ELSE 0 END), 0) as interviewing,
                 COALESCE(SUM(CASE WHEN r.status = 'offer_made' THEN (rr.requested_count - rr.filled_count) ELSE 0 END), 0) as offer_made,
@@ -114,7 +116,7 @@ async def get_requisition_stats(
                 COALESCE(SUM(CASE WHEN r.status = 'cancelled' THEN rr.requested_count ELSE 0 END), 0) as cancelled
             FROM requisitions r
             LEFT JOIN requisition_roles rr ON r.id = rr.requisition_id
-        """, (seven_days_ago,)) as cursor:
+        """, (seven_days_ago, seven_days_ago)) as cursor:
             row = await cursor.fetchone()
             return dict(row)
 
