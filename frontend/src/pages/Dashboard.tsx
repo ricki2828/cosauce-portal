@@ -15,6 +15,7 @@ import {
 import { OpportunityModal } from '../components/dashboard/OpportunityModal';
 import { EditRequisitionModal } from '../components/people/EditRequisitionModal';
 import { CreateRequisitionModal } from '../components/people/CreateRequisitionModal';
+import { ChecklistModal } from '../components/people/ChecklistModal';
 
 export function Dashboard() {
   // Priorities state
@@ -47,6 +48,9 @@ export function Dashboard() {
   // Requisition modal state
   const [editingRequisition, setEditingRequisition] = useState<Requisition | null>(null);
   const [showCreateReqModal, setShowCreateReqModal] = useState(false);
+
+  // Onboarding checklist modal state
+  const [selectedHire, setSelectedHire] = useState<NewHire | null>(null);
 
   // Shift update state - no longer needed with KPICards
   // Removed: commentary functionality replaced by KPICards component
@@ -313,7 +317,7 @@ export function Dashboard() {
               <h4 className="text-sm font-medium text-gray-700 mb-3">Onboarding</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {newHires.map((hire) => (
-                  <NewHireMiniCard key={hire.id} hire={hire} />
+                  <NewHireMiniCard key={hire.id} hire={hire} onClick={setSelectedHire} />
                 ))}
               </div>
             </div>
@@ -372,6 +376,16 @@ export function Dashboard() {
           requisition={editingRequisition}
           onClose={() => setEditingRequisition(null)}
           onSubmit={handleUpdateRequisition}
+        />
+      )}
+
+      {/* Onboarding Checklist Modal */}
+      {selectedHire && (
+        <ChecklistModal
+          isOpen={!!selectedHire}
+          onClose={() => setSelectedHire(null)}
+          hireId={selectedHire.id}
+          hireName={selectedHire.name}
         />
       )}
     </div>

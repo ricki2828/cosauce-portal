@@ -1,12 +1,12 @@
 import type { NewHire } from '../../lib/api';
 import { User, Calendar, CheckCircle, Clock } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 interface NewHireMiniCardProps {
   hire: NewHire;
+  onClick?: (hire: NewHire) => void;
 }
 
-export function NewHireMiniCard({ hire }: NewHireMiniCardProps) {
+export function NewHireMiniCard({ hire, onClick }: NewHireMiniCardProps) {
   const statusColors = {
     pending: 'bg-amber-100 text-amber-800',
     active: 'bg-blue-100 text-blue-800',
@@ -31,9 +31,9 @@ export function NewHireMiniCard({ hire }: NewHireMiniCardProps) {
   };
 
   return (
-    <Link
-      to="/people"
-      className="block bg-white rounded-lg border border-gray-200 p-3 hover:border-gray-300 hover:shadow-sm transition-all"
+    <div
+      onClick={() => onClick?.(hire)}
+      className="block bg-white rounded-lg border border-gray-200 p-3 hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer"
     >
       {/* Header */}
       <div className="flex items-start gap-3 mb-3">
@@ -82,6 +82,6 @@ export function NewHireMiniCard({ hire }: NewHireMiniCardProps) {
         </div>
         <p className="text-xs text-gray-500 mt-1">{completionPercentage.toFixed(0)}% complete</p>
       </div>
-    </Link>
+    </div>
   );
 }
