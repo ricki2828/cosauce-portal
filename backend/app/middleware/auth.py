@@ -64,14 +64,29 @@ async def get_current_user(
     return user
 
 
+async def get_current_superadmin(
+    current_user: dict = Depends(get_current_user)
+) -> dict:
+    """
+    Dependency to require superadmin role.
+    Raises HTTPException if user is not a superadmin.
+    """
+    if current_user.get("role") != "superadmin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Superadmin access required"
+        )
+    return current_user
+
+
 async def get_current_admin(
     current_user: dict = Depends(get_current_user)
 ) -> dict:
     """
-    Dependency to require admin role.
-    Raises HTTPException if user is not an admin.
+    Dependency to require admin role (or superadmin).
+    Raises HTTPException if user is not an admin or superadmin.
     """
-    if current_user.get("role") != "admin":
+    if current_user.get("role") not in ["admin", "superadmin"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required"
@@ -84,9 +99,9 @@ async def get_current_director(
 ) -> dict:
     """
     Dependency to require director or admin role.
-    Raises HTTPException if user is not a director or admin.
+    Raises HTTPException if user is not a director, admin, or superadmin.
     """
-    if current_user.get("role") not in ["director", "admin"]:
+    if current_user.get("role") not in ["director", "admin", "superadmin"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Director or admin access required"
@@ -99,9 +114,9 @@ async def get_current_team_leader(
 ) -> dict:
     """
     Dependency to require team_leader role (or higher).
-    Raises HTTPException if user is not a team leader, director, or admin.
+    Raises HTTPException if user is not a team leader, director, admin, or superadmin.
     """
-    if current_user.get("role") not in ["team_leader", "director", "admin"]:
+    if current_user.get("role") not in ["team_leader", "director", "admin", "superadmin"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Team leader access required"

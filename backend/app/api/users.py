@@ -16,7 +16,7 @@ from ..config import DATA_DIR
 router = APIRouter(prefix="/users", tags=["User Management"])
 auth_service = AuthService()
 DB_PATH = DATA_DIR / "portal.db"
-VALID_ROLES = ["admin", "director", "viewer", "team_leader"]
+VALID_ROLES = ["superadmin", "admin", "director", "viewer", "team_leader"]
 
 
 # Request/Response Models
@@ -78,6 +78,13 @@ async def create_user(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid role. Must be one of: {', '.join(VALID_ROLES)}"
+        )
+
+    # Only superadmin can assign superadmin role
+    if user_data.role == "superadmin" and current_user.get("role") != "superadmin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only a superadmin can assign the superadmin role"
         )
 
     # Check if email already exists
@@ -167,10 +174,16 @@ async def update_user(
         params.append(updates.name)
 
     if updates.role is not None:
-        if updates.role not in ["admin", "director", "viewer"]:
+        if updates.role not in VALID_ROLES:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid role. Must be one of: admin, director, viewer"
+                detail=f"Invalid role. Must be one of: {', '.join(VALID_ROLES)}"
+            )
+        # Only superadmin can assign superadmin role
+        if updates.role == "superadmin" and current_user.get("role") != "superadmin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only a superadmin can assign the superadmin role"
             )
         update_fields.append("role = ?")
         params.append(updates.role)

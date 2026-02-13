@@ -37,11 +37,15 @@ JWT_REFRESH_TOKEN_EXPIRE_DAYS = 7  # 7 days
 # File uploads
 UPLOADS_DIR = DATA_DIR / 'uploads'
 INVOICES_DIR = UPLOADS_DIR / 'invoices'
+PAYABLES_UPLOADS_DIR = UPLOADS_DIR / 'payables'
+CASHFLOW_UPLOADS_DIR = UPLOADS_DIR / 'cashflow'
 MAX_UPLOAD_SIZE_MB = 10
 
 # Ensure upload directories exist
 UPLOADS_DIR.mkdir(exist_ok=True)
 INVOICES_DIR.mkdir(exist_ok=True)
+PAYABLES_UPLOADS_DIR.mkdir(exist_ok=True)
+CASHFLOW_UPLOADS_DIR.mkdir(exist_ok=True)
 
 # External Sales APIs
 RAPIDAPI_KEY = os.getenv('RAPIDAPI_KEY', '')  # For JSearch job board API

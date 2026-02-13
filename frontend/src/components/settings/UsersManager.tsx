@@ -2,8 +2,11 @@ import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, X, Save, Users as UsersIcon, Key, Shield, Eye, EyeOff } from 'lucide-react';
 import { usersApi } from '../../lib/api';
 import type { User, CreateUserData, UpdateUserData } from '../../lib/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 export function UsersManager() {
+  const { user: currentUser } = useAuth();
+  const isSuperadmin = currentUser?.role === 'superadmin';
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -157,6 +160,8 @@ export function UsersManager() {
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
+      case 'superadmin':
+        return 'bg-purple-100 text-purple-800';
       case 'admin':
         return 'bg-red-100 text-red-800';
       case 'director':
@@ -205,6 +210,7 @@ export function UsersManager() {
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
           >
             <option value="">All Roles</option>
+            {isSuperadmin && <option value="superadmin">Superadmin</option>}
             <option value="admin">Admin</option>
             <option value="director">Director</option>
             <option value="team_leader">Team Leader</option>
@@ -403,12 +409,14 @@ export function UsersManager() {
                   <option value="team_leader">Team Leader</option>
                   <option value="director">Director</option>
                   <option value="admin">Admin</option>
+                  {isSuperadmin && <option value="superadmin">Superadmin</option>}
                 </select>
                 <div className="mt-2 text-xs text-gray-600 space-y-1">
                   <p><strong>Viewer:</strong> Read-only access</p>
                   <p><strong>Team Leader:</strong> Can submit updates for their team</p>
                   <p><strong>Director:</strong> Can view all data and submit for team leaders</p>
-                  <p><strong>Admin:</strong> Full system access</p>
+                  <p><strong>Admin:</strong> Full system access including user management</p>
+                  {isSuperadmin && <p><strong>Superadmin:</strong> Full access including cashflow and finance</p>}
                 </div>
               </div>
 

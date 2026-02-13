@@ -13,6 +13,10 @@ import type {
   Employee, OrgNode, Department, EmployeeCreate, EmployeeUpdate, TalentStats,
   AccountCampaignType
 } from './talent-types';
+import type {
+  Payable, PayableComment, CashflowMonthly, CashflowSummary, CashflowImport, FXRate,
+  CashflowAccount, CashflowAccountCreate, CashflowCellUpdate
+} from './finance-types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://91.98.79.241:8004';
 
@@ -1031,7 +1035,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'director' | 'viewer' | 'team_leader';
+  role: 'superadmin' | 'admin' | 'director' | 'viewer' | 'team_leader';
   is_active: number;
   created_at: string;
   last_login: string | null;
@@ -1251,4 +1255,71 @@ export const invoicingApi = {
   // Get list of unique client names
   getClients: () =>
     api.get<string[]>('/api/invoicing/clients'),
+};
+
+// ==================== PAYABLES API ====================
+
+export const payablesApi = {
+  submit: (formData: FormData) =>
+    api.post<Payable>('/api/payables/submit', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  getMySubmissions: () =>
+    api.get<Payable[]>('/api/payables/my-submissions'),
+  getAll: (params?: { status?: string; category?: string; priority?: string }) =>
+    api.get<Payable[]>('/api/payables', { params }),
+  get: (id: string) =>
+    api.get<Payable>(`/api/payables/${id}`),
+  update: (id: string, data: Record<string, unknown>) =>
+    api.put<Payable>(`/api/payables/${id}`, data),
+  approve: (id: string) =>
+    api.put<Payable>(`/api/payables/${id}/approve`),
+  reject: (id: string, reason?: string) =>
+    api.put<Payable>(`/api/payables/${id}/reject`, { reason }),
+  addComment: (id: string, data: { content: string }) =>
+    api.post<PayableComment>(`/api/payables/${id}/comments`, data),
+  markLoaded: (id: string) =>
+    api.post<Payable>(`/api/payables/${id}/mark-loaded`),
+  markPaid: (id: string) =>
+    api.post<Payable>(`/api/payables/${id}/mark-paid`),
+  downloadAttachment: (id: string) =>
+    api.get(`/api/payables/${id}/attachment`, { responseType: 'blob' }),
+  delete: (id: string) =>
+    api.delete(`/api/payables/${id}`),
+};
+
+// ==================== CASHFLOW API ====================
+
+export const cashflowApi = {
+  // Accounts
+  getAccounts: () =>
+    api.get<CashflowAccount[]>('/api/cashflow/accounts'),
+  createAccount: (data: CashflowAccountCreate) =>
+    api.post<CashflowAccount>('/api/cashflow/accounts', data),
+  updateAccount: (id: string, data: { line_item?: string; subcategory?: string; display_order?: number; is_active?: number }) =>
+    api.put<CashflowAccount>(`/api/cashflow/accounts/${id}`, data),
+  deleteAccount: (id: string) =>
+    api.delete(`/api/cashflow/accounts/${id}`),
+  // Cell updates
+  upsertCell: (data: CashflowCellUpdate) =>
+    api.put('/api/cashflow/monthly/cell', data),
+  upsertBulk: (entries: CashflowCellUpdate[]) =>
+    api.put('/api/cashflow/monthly/bulk', { entries }),
+  // Monthly data
+  getMonthly: (params?: { year?: number; category?: string }) =>
+    api.get<CashflowMonthly[]>('/api/cashflow/monthly', { params }),
+  getDaily: (params?: { start_date?: string; end_date?: string; category?: string }) =>
+    api.get<CashflowMonthly[]>('/api/cashflow/daily', { params }),
+  importExcel: (formData: FormData) =>
+    api.post('/api/cashflow/import-excel', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  getImports: () =>
+    api.get<CashflowImport[]>('/api/cashflow/imports'),
+  getSummary: (year?: number) =>
+    api.get<CashflowSummary>('/api/cashflow/summary', { params: { year } }),
+  getFXRates: () =>
+    api.get<FXRate[]>('/api/cashflow/fx-rates'),
+  addFXRate: (data: { from_currency: string; to_currency: string; rate: number; effective_date: string }) =>
+    api.post<FXRate>('/api/cashflow/fx-rates', data),
 };

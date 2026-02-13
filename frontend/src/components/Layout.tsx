@@ -1,10 +1,11 @@
 import { Link, useLocation, Outlet } from 'react-router-dom';
-import { FileText, Users, Megaphone, LayoutDashboard, Settings, Flag, UserCog, BarChart3, Users2 } from 'lucide-react';
+import { FileText, Users, Megaphone, LayoutDashboard, Settings, Flag, UserCog, BarChart3, Users2, DollarSign } from 'lucide-react';
 import UserMenu from './auth/UserMenu';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Priorities', href: '/priorities', icon: Flag },
+  { name: 'Finance', href: '/finance', icon: DollarSign },
   { name: 'Contracts', href: '/contracts', icon: FileText },
   { name: 'Sales', href: '/sales', icon: Users },
   { name: 'Outreach', href: '/outreach', icon: Megaphone },

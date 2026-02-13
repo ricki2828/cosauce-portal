@@ -12,6 +12,7 @@ import { Priorities } from './pages/Priorities';
 import { People } from './pages/People';
 import { BusinessUpdates } from './pages/BusinessUpdates';
 import { Talent } from './pages/Talent';
+import { Finance } from './pages/Finance';
 import Login from './pages/Login';
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ function App() {
             >
               <Route index element={<Dashboard />} />
               <Route path="priorities" element={<Priorities />} />
+              <Route path="finance" element={<Finance />} />
               <Route path="contracts" element={<Contracts />} />
               <Route path="sales" element={<Sales />} />
               <Route path="outreach" element={<Outreach />} />

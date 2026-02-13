@@ -41,7 +41,7 @@ export function Settings() {
   // Define tabs based on user role
   const tabs = [
     { id: 'general' as SettingsTabType, label: 'General', icon: SettingsIcon },
-    ...(user?.role === 'admin' ? [{ id: 'users' as SettingsTabType, label: 'Users', icon: Users }] : []),
+    ...(user?.role === 'admin' || user?.role === 'superadmin' ? [{ id: 'users' as SettingsTabType, label: 'Users', icon: Users }] : []),
   ];
 
   // Load BPO prompt on mount

@@ -1,3 +1,5 @@
+import tailwindcssAnimate from 'tailwindcss-animate'
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
@@ -7,28 +9,52 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: '#FFFDF5',
-        foreground: '#1E293B',
-        muted: '#F1F5F9',
-        mutedForeground: '#64748B',
-        accent: '#8B5CF6',
-        accentForeground: '#FFFFFF',
-        secondary: '#F472B6',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        primary: {
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))',
+        },
+        secondary: {
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))',
+        },
+        muted: {
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))',
+        },
+        accent: {
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))',
+        },
+        destructive: {
+          DEFAULT: 'hsl(var(--destructive))',
+          foreground: 'hsl(var(--destructive-foreground))',
+        },
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        card: {
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))',
+        },
+        popover: {
+          DEFAULT: 'hsl(var(--popover))',
+          foreground: 'hsl(var(--popover-foreground))',
+        },
+        // Brand colors (not in shadcn, kept as direct values)
         tertiary: '#FBBF24',
         quaternary: '#34D399',
-        border: '#E2E8F0',
-        input: '#FFFFFF',
-        card: '#FFFFFF',
-        ring: '#8B5CF6',
       },
       fontFamily: {
         heading: ['"Outfit"', 'system-ui', 'sans-serif'],
         body: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
-        sm: '8px',
-        md: '16px',
-        lg: '24px',
+        sm: 'calc(var(--radius) - 8px)',
+        md: 'calc(var(--radius) - 4px)',
+        lg: 'var(--radius)',
+        xl: 'calc(var(--radius) + 8px)',
         full: '9999px',
       },
       borderWidth: {
@@ -52,15 +78,25 @@ export default {
           '50%': { transform: 'scale(1.1)' },
           '100%': { transform: 'scale(1)', opacity: '1' },
         },
+        'accordion-down': {
+          from: { height: '0' },
+          to: { height: 'var(--radix-accordion-content-height)' },
+        },
+        'accordion-up': {
+          from: { height: 'var(--radix-accordion-content-height)' },
+          to: { height: '0' },
+        },
       },
       animation: {
         wiggle: 'wiggle 0.5s ease-in-out',
         popIn: 'popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        'accordion-down': 'accordion-down 0.2s ease-out',
+        'accordion-up': 'accordion-up 0.2s ease-out',
       },
       transitionTimingFunction: {
         bounce: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
       },
     },
   },
-  plugins: [],
+  plugins: [tailwindcssAnimate],
 }
