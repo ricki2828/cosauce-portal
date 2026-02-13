@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Flag, BarChart3, Users, TrendingUp, Plus } from 'lucide-react';
 import { prioritiesApi, peopleApi, pipelineApi } from '../lib/api';
-import type { Requisition, RequisitionUpdate, RequisitionStats, NewHire, PipelineOpportunity, PipelineOpportunityCreate, PipelineOpportunityUpdate } from '../lib/api';
+import type { Requisition, RequisitionCreate, RequisitionUpdate, RequisitionStats, NewHire, PipelineOpportunity, PipelineOpportunityCreate, PipelineOpportunityUpdate } from '../lib/api';
 import type { Priority } from '../lib/priorities-types';
 import {
   DashboardSection,
@@ -14,6 +14,7 @@ import {
 } from '../components/dashboard';
 import { OpportunityModal } from '../components/dashboard/OpportunityModal';
 import { EditRequisitionModal } from '../components/people/EditRequisitionModal';
+import { CreateRequisitionModal } from '../components/people/CreateRequisitionModal';
 
 export function Dashboard() {
   // Priorities state
@@ -43,8 +44,9 @@ export function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedOpportunity, setSelectedOpportunity] = useState<PipelineOpportunity | undefined>(undefined);
 
-  // Requisition edit modal state
+  // Requisition modal state
   const [editingRequisition, setEditingRequisition] = useState<Requisition | null>(null);
+  const [showCreateReqModal, setShowCreateReqModal] = useState(false);
 
   // Shift update state - no longer needed with KPICards
   // Removed: commentary functionality replaced by KPICards component
@@ -164,6 +166,17 @@ export function Dashboard() {
     }
   };
 
+  // Handle requisition create
+  const handleCreateRequisition = async (data: RequisitionCreate) => {
+    try {
+      await peopleApi.createRequisition(data);
+      setShowCreateReqModal(false);
+      await loadRequisitions();
+    } catch (error) {
+      console.error('Failed to create requisition:', error);
+    }
+  };
+
   // Handle requisition edit
   const handleEditRequisition = (requisition: Requisition) => {
     setEditingRequisition(requisition);
@@ -237,6 +250,15 @@ export function Dashboard() {
         }}
         isEmpty={requisitions.length === 0 && newHires.length === 0}
         emptyMessage="No requisitions or new hires."
+        action={
+          <button
+            onClick={() => setShowCreateReqModal(true)}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            New Requisition
+          </button>
+        }
       >
         <div className="space-y-6">
           {/* Requisition Summary Stats */}
@@ -335,6 +357,14 @@ export function Dashboard() {
         onSave={handleSaveOpportunity}
         opportunity={selectedOpportunity}
       />
+
+      {/* Create Requisition Modal */}
+      {showCreateReqModal && (
+        <CreateRequisitionModal
+          onClose={() => setShowCreateReqModal(false)}
+          onSubmit={handleCreateRequisition}
+        />
+      )}
 
       {/* Edit Requisition Modal */}
       {editingRequisition && (
