@@ -1,15 +1,17 @@
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Settings } from 'lucide-react';
 import type { Requisition, RequisitionUpdate } from '../../lib/api';
 
 export function EditRequisitionModal({
   requisition,
   onClose,
   onSubmit,
+  onManageRoles,
 }: {
   requisition: Requisition;
   onClose: () => void;
   onSubmit: (data: RequisitionUpdate) => void;
+  onManageRoles?: () => void;
 }) {
   const [formData, setFormData] = useState<RequisitionUpdate>({
     title: requisition.title,
@@ -121,22 +123,44 @@ export function EditRequisitionModal({
             </select>
           </div>
 
-          {/* Role Lines Section (Read-Only) */}
+          {/* Role Lines Section */}
           <div className="border-t pt-4">
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Role Lines {totalRoles > 0 && <span className="text-gray-500">({totalRoles} total positions)</span>}
-            </label>
+            <div className="flex items-center justify-between mb-3">
+              <label className="block text-sm font-medium text-gray-700">
+                Role Lines {totalRoles > 0 && <span className="text-gray-500">({totalRoles} total positions)</span>}
+              </label>
+              {onManageRoles && (
+                <button
+                  type="button"
+                  onClick={onManageRoles}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                  Manage Roles
+                </button>
+              )}
+            </div>
 
             {requisition.roles.length > 0 ? (
               <div className="space-y-2">
                 {requisition.roles.map((role) => (
-                  <div key={role.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="flex-1">
+                  <div key={role.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
                       <span className="font-medium text-gray-800">{role.role_type}</span>
                       <span className="mx-2 text-gray-400">&times;</span>
                       <span className="text-gray-600">{role.requested_count}</span>
-                      {role.filled_count > 0 && (
-                        <span className="ml-2 text-green-600">({role.filled_count} filled)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">{role.filled_count}/{role.requested_count} filled</span>
+                      {role.remaining_count > 0 && (
+                        <span className="px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded-full">
+                          {role.remaining_count} remaining
+                        </span>
+                      )}
+                      {role.remaining_count === 0 && (
+                        <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full">
+                          complete
+                        </span>
                       )}
                     </div>
                   </div>
@@ -145,9 +169,6 @@ export function EditRequisitionModal({
             ) : (
               <p className="text-sm text-gray-500 italic">No role lines defined</p>
             )}
-            <p className="mt-2 text-xs text-gray-500">
-              Note: Role lines cannot be edited here. Use the requisition details page to manage roles.
-            </p>
           </div>
 
           <div>

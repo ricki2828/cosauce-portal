@@ -16,6 +16,7 @@ import { OpportunityModal } from '../components/dashboard/OpportunityModal';
 import { EditRequisitionModal } from '../components/people/EditRequisitionModal';
 import { CreateRequisitionModal } from '../components/people/CreateRequisitionModal';
 import { ChecklistModal } from '../components/people/ChecklistModal';
+import { ManageRolesModal } from '../components/people/ManageRolesModal';
 
 export function Dashboard() {
   // Priorities state
@@ -48,6 +49,9 @@ export function Dashboard() {
   // Requisition modal state
   const [editingRequisition, setEditingRequisition] = useState<Requisition | null>(null);
   const [showCreateReqModal, setShowCreateReqModal] = useState(false);
+
+  // Manage roles modal state
+  const [managingRolesRequisition, setManagingRolesRequisition] = useState<Requisition | null>(null);
 
   // Onboarding checklist modal state
   const [selectedHire, setSelectedHire] = useState<NewHire | null>(null);
@@ -376,6 +380,21 @@ export function Dashboard() {
           requisition={editingRequisition}
           onClose={() => setEditingRequisition(null)}
           onSubmit={handleUpdateRequisition}
+          onManageRoles={() => {
+            setManagingRolesRequisition(editingRequisition);
+            setEditingRequisition(null);
+          }}
+        />
+      )}
+
+      {/* Manage Roles Modal */}
+      {managingRolesRequisition && (
+        <ManageRolesModal
+          requisition={managingRolesRequisition}
+          onClose={() => {
+            setManagingRolesRequisition(null);
+          }}
+          onUpdate={loadRequisitions}
         />
       )}
 
