@@ -73,20 +73,25 @@ async def list_employees(
     async with aiosqlite.connect(DATA_DIR / "portal.db") as db:
         db.row_factory = aiosqlite.Row
 
-        query = "SELECT * FROM team_members WHERE 1=1"
+        query = """
+            SELECT tm.*, a.name as account_name
+            FROM team_members tm
+            LEFT JOIN bu_accounts a ON tm.account_id = a.id
+            WHERE 1=1
+        """
         params = []
 
         if status:
-            query += " AND status = ?"
+            query += " AND tm.status = ?"
             params.append(status)
         if department:
-            query += " AND department = ?"
+            query += " AND tm.department = ?"
             params.append(department)
         if account_id:
-            query += " AND account_id = ?"
+            query += " AND tm.account_id = ?"
             params.append(account_id)
 
-        query += " ORDER BY name"
+        query += " ORDER BY tm.name"
 
         async with db.execute(query, params) as cursor:
             rows = await cursor.fetchall()
@@ -107,7 +112,12 @@ async def get_employee(
     async with aiosqlite.connect(DATA_DIR / "portal.db") as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            "SELECT * FROM team_members WHERE id = ?",
+            """
+            SELECT tm.*, a.name as account_name
+            FROM team_members tm
+            LEFT JOIN bu_accounts a ON tm.account_id = a.id
+            WHERE tm.id = ?
+            """,
             (employee_id,)
         ) as cursor:
             row = await cursor.fetchone()

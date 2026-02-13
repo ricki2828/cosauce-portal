@@ -8,7 +8,8 @@ export interface Employee {
   email: string | null;
   role: string;  // Job title
   department: string | null;  // Department (HR, Technology, etc.)
-  account_id: string | null;  // Client account (if applicable)
+  account_id: string | null;  // Client account ID (if applicable)
+  account_name: string | null;  // Resolved client name
   manager_id: string | null;  // Reports to
   status: 'pending' | 'onboarding' | 'active' | 'offboarded';
   start_date: string | null;  // ISO date string

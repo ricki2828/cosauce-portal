@@ -187,7 +187,7 @@ function EmployeeNode({ data }: EmployeeNodeProps) {
                 color: color
               }}
             >
-              👥 {employee.account_id}
+              👥 {employee.account_name || employee.account_id}
             </div>
           </div>
         )}

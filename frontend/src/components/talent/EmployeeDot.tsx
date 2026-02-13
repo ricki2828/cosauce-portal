@@ -42,7 +42,7 @@ export default function EmployeeDot({ employee, onClick, size = 'md', hasPartial
           <div className="font-semibold">{employee.name}</div>
           <div className="text-gray-300">{employee.role}</div>
           {employee.account_id && (
-            <div className="text-gray-400 mt-1">Client: {employee.account_id}</div>
+            <div className="text-gray-400 mt-1">Client: {employee.account_name || employee.account_id}</div>
           )}
           <div className="flex gap-3 mt-1 text-gray-400">
             <span>Perf: {employee.performance || <span className="italic">Not rated</span>}</span>

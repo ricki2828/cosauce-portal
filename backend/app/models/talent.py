@@ -50,6 +50,7 @@ class Employee(EmployeeBase):
     id: str
     created_at: datetime
     updated_at: datetime
+    account_name: Optional[str] = None  # Resolved from bu_accounts
 
 
 class EmployeeWithReports(Employee):
