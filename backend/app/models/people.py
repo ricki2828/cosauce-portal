@@ -81,6 +81,8 @@ class Requisition(RequisitionBase):
     created_by: str
     created_at: datetime  # This is the "date requested"
     updated_at: datetime
+    heapsbetter_job_id: Optional[str] = None
+    ats_synced_at: Optional[datetime] = None
 
 class RequisitionCommentCreate(BaseModel):
     """Create a new comment on a requisition"""

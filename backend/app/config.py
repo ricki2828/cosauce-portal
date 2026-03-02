@@ -50,6 +50,15 @@ CASHFLOW_UPLOADS_DIR.mkdir(exist_ok=True)
 # External Sales APIs
 RAPIDAPI_KEY = os.getenv('RAPIDAPI_KEY', '')  # For JSearch job board API
 APOLLO_API_KEY = os.getenv('APOLLO_API_KEY', '')  # For contact enrichment
+HEAPSBETTER_API_KEY = os.getenv('HEAPSBETTER_API_KEY', '')
+
+# Anthropic API (AI forecast)
+ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')
+
+# Xero API Configuration
+XERO_CLIENT_ID = os.getenv('XERO_CLIENT_ID', '')
+XERO_CLIENT_SECRET = os.getenv('XERO_CLIENT_SECRET', '')
+XERO_REDIRECT_URI = os.getenv('XERO_REDIRECT_URI', 'https://cosauce.taiaroa.xyz/api/xero/callback')
 
 # Job Search Defaults
 JOB_SEARCH_LOCATION = os.getenv('JOB_SEARCH_LOCATION', 'Canada')

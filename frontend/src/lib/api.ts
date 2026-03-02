@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Priority, PriorityUpdate, PriorityCreate, PriorityUpdateCreate } from './priorities-types';
+import type { Priority, PriorityUpdate, PriorityCreate, PriorityUpdateCreate, Assignee, DepartmentUpdate, DepartmentUpdateUpsert } from './priorities-types';
 import type {
   Account, AccountCreate, AccountUpdate,
   TeamLeader, TeamLeaderCreate, TeamLeaderUpdate,
@@ -15,7 +15,13 @@ import type {
 } from './talent-types';
 import type {
   Payable, PayableComment, CashflowMonthly, CashflowSummary, CashflowImport, FXRate,
-  CashflowAccount, CashflowAccountCreate, CashflowCellUpdate
+  CashflowAccount, CashflowAccountCreate, CashflowCellUpdate,
+  CashflowDaily, CashflowDailyCreate, CashflowDailyUpdate, DailySummaryResponse,
+  XeroStatus, XeroSyncRequest, XeroSyncResponse, XeroContact,
+  XeroContactMapping, XeroContactMappingCreate, XeroSyncHistoryEntry,
+  XeroContactWithStatus,
+  ForecastGenerateRequest, ForecastGenerateResult, ForecastChatRequest,
+  ForecastChatResponse, ForecastChange, ForecastApplyRequest,
 } from './finance-types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://91.98.79.241:8004';
@@ -447,15 +453,24 @@ export type {
   Priority,
   PriorityUpdate,
   PriorityCreate,
-  PriorityUpdateCreate
+  PriorityUpdateCreate,
+  PriorityLevel,
+  PriorityArea,
+  Assignee,
+  DepartmentUpdate,
+  DepartmentUpdateUpsert,
 } from './priorities-types';
 
 // ==================== PRIORITIES API ====================
 
 export const prioritiesApi = {
-  // List all priorities
-  getPriorities: (status?: string) =>
-    api.get<Priority[]>('/api/priorities', { params: { status } }),
+  // List all priorities with filters
+  getPriorities: (filters?: { status?: string; area?: string; priority_level?: string; owner_id?: string }) =>
+    api.get<Priority[]>('/api/priorities', { params: filters }),
+
+  // Get assignees for owner dropdowns
+  getAssignees: () =>
+    api.get<Assignee[]>('/api/priorities/meta/assignees'),
 
   // Get specific priority
   getPriority: (id: string) =>
@@ -476,6 +491,25 @@ export const prioritiesApi = {
   // Add update to priority (directors/admins only)
   addUpdate: (priorityId: string, data: PriorityUpdateCreate) =>
     api.post<PriorityUpdate>(`/api/priorities/${priorityId}/updates`, data),
+};
+
+// ==================== DEPARTMENT UPDATES API ====================
+
+export const departmentUpdatesApi = {
+  getUpdates: (weekStart?: string) =>
+    api.get<DepartmentUpdate[]>('/api/department-updates', { params: weekStart ? { week_start: weekStart } : {} }),
+
+  getWeeks: (limit?: number) =>
+    api.get<string[]>('/api/department-updates/weeks', { params: limit ? { limit } : {} }),
+
+  upsert: (data: DepartmentUpdateUpsert) =>
+    api.put<DepartmentUpdate>('/api/department-updates', data),
+
+  rollover: () =>
+    api.post<{ from_week: string; to_week: string; departments_created: number }>('/api/department-updates/rollover'),
+
+  initWeek: () =>
+    api.post<{ message: string; week_start: string }>('/api/department-updates/init-week'),
 };
 
 // ==================== PEOPLE TYPES ====================
@@ -540,6 +574,8 @@ export interface Requisition {
   updated_at: string;
   roles: RequisitionRole[];  // Role lines with remaining counts
   latest_comment: RequisitionCommentLatest | null;  // Latest comment with author
+  heapsbetter_job_id: string | null;
+  ats_synced_at: string | null;
 }
 
 export interface RequisitionCreate {
@@ -1167,6 +1203,8 @@ export interface Invoice {
   client_name: string;
   period_month: number;
   period_year: number;
+  payment_month: number | null;
+  payment_year: number | null;
   status: InvoiceStatus;
   currency: string;
   notes: string | null;
@@ -1190,6 +1228,8 @@ export interface InvoiceUpdate {
   status?: InvoiceStatus;
   currency?: string;
   notes?: string;
+  payment_month?: number;
+  payment_year?: number;
 }
 
 export interface InvoicePeriod {
@@ -1300,6 +1340,8 @@ export const cashflowApi = {
     api.put<CashflowAccount>(`/api/cashflow/accounts/${id}`, data),
   deleteAccount: (id: string) =>
     api.delete(`/api/cashflow/accounts/${id}`),
+  reorderAccounts: (ordering: { id: string; display_order: number }[]) =>
+    api.put('/api/cashflow/accounts/reorder', ordering),
   // Cell updates
   upsertCell: (data: CashflowCellUpdate) =>
     api.put('/api/cashflow/monthly/cell', data),
@@ -1309,7 +1351,15 @@ export const cashflowApi = {
   getMonthly: (params?: { year?: number; category?: string }) =>
     api.get<CashflowMonthly[]>('/api/cashflow/monthly', { params }),
   getDaily: (params?: { start_date?: string; end_date?: string; category?: string }) =>
-    api.get<CashflowMonthly[]>('/api/cashflow/daily', { params }),
+    api.get<CashflowDaily[]>('/api/cashflow/daily', { params }),
+  getDailySummary: (startDate: string, endDate: string) =>
+    api.get<DailySummaryResponse>('/api/cashflow/daily/summary', { params: { start_date: startDate, end_date: endDate } }),
+  createDaily: (data: CashflowDailyCreate) =>
+    api.post<CashflowDaily>('/api/cashflow/daily', data),
+  updateDaily: (id: string, data: CashflowDailyUpdate) =>
+    api.put<CashflowDaily>(`/api/cashflow/daily/${id}`, data),
+  deleteDaily: (id: string) =>
+    api.delete(`/api/cashflow/daily/${id}`),
   importExcel: (formData: FormData) =>
     api.post('/api/cashflow/import-excel', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -1322,4 +1372,131 @@ export const cashflowApi = {
     api.get<FXRate[]>('/api/cashflow/fx-rates'),
   addFXRate: (data: { from_currency: string; to_currency: string; rate: number; effective_date: string }) =>
     api.post<FXRate>('/api/cashflow/fx-rates', data),
+  // Forecast
+  generateForecast: (fromYear: number, fromMonth: number) =>
+    api.post<ForecastGenerateResult>('/api/cashflow/forecast/generate', { from_year: fromYear, from_month: fromMonth }),
+  forecastChat: (message: string, year: number) =>
+    api.post<ForecastChatResponse>('/api/cashflow/forecast/chat', { message, year }),
+  applyForecastChanges: (changes: ForecastChange[]) =>
+    api.post('/api/cashflow/forecast/apply', { changes }),
+  clearForecasts: (year: number) =>
+    api.delete(`/api/cashflow/forecast/clear?year=${year}`),
+  // Invoice sync
+  syncInvoices: (year: number, month?: number) =>
+    api.post<{ synced: number; skipped: number; errors: string[] }>(
+      '/api/cashflow/sync-invoices',
+      { year, month: month || null },
+    ),
+  // Building blocks
+  getBuildingBlocks: (accountId?: string) =>
+    api.get('/api/cashflow/building-blocks', { params: accountId ? { account_id: accountId } : {} }),
+  createBuildingBlock: (data: { cashflow_account_id: string; role_name: string; default_rate: number; default_quantity: number; currency?: string; notes?: string }) =>
+    api.post('/api/cashflow/building-blocks', data),
+  updateBuildingBlock: (id: string, data: { role_name?: string; default_rate?: number; default_quantity?: number; notes?: string; is_active?: number }) =>
+    api.put(`/api/cashflow/building-blocks/${id}`, data),
+  deleteBuildingBlock: (id: string) =>
+    api.delete(`/api/cashflow/building-blocks/${id}`),
+  setBuildingBlockOverride: (id: string, month: number, year: number, data: { rate_override?: number; quantity_override?: number; notes?: string }) =>
+    api.put(`/api/cashflow/building-blocks/${id}/override`, data, { params: { month, year } }),
+  initBuildingBlocks: (accountId: string) =>
+    api.post(`/api/cashflow/building-blocks/init/${accountId}`),
+  generateBottomUpForecast: (fromYear: number, fromMonth: number, months?: number) =>
+    api.post('/api/cashflow/forecast/bottom-up', { from_year: fromYear, from_month: fromMonth, months: months || 12 }),
+  // Bank balances
+  getBankBalances: () =>
+    api.get('/api/cashflow/bank-balances'),
+  createBankBalance: (data: { account_name: string; currency: string; balance?: number }) =>
+    api.post('/api/cashflow/bank-balances', data),
+  updateBankBalance: (id: string, data: { balance?: number; balance_zar?: number; account_name?: string }) =>
+    api.put(`/api/cashflow/bank-balances/${id}`, data),
+  // Agent headcount
+  getAgentHeadcount: (year: number) =>
+    api.get('/api/cashflow/agent-headcount', { params: { year } }),
+};
+
+// ==================== XERO API ====================
+
+export const xeroApi = {
+  getAuthUrl: () =>
+    api.get<{ url: string }>('/api/xero/auth-url'),
+  getStatus: () =>
+    api.get<XeroStatus>('/api/xero/status'),
+  disconnect: (tenantId?: string) =>
+    api.post('/api/xero/disconnect', null, { params: tenantId ? { tenant_id: tenantId } : {} }),
+  sync: (data: XeroSyncRequest) =>
+    api.post<XeroSyncResponse>('/api/xero/sync', data),
+  getSyncHistory: (limit?: number) =>
+    api.get<XeroSyncHistoryEntry[]>('/api/xero/sync-history', { params: { limit } }),
+  getContacts: () =>
+    api.get<XeroContact[]>('/api/xero/contacts'),
+  getContactsWithStatus: () =>
+    api.get<XeroContactWithStatus[]>('/api/xero/contacts-with-status'),
+  getContactMappings: () =>
+    api.get<XeroContactMapping[]>('/api/xero/contact-mappings'),
+  createContactMapping: (data: XeroContactMappingCreate) =>
+    api.post<XeroContactMapping>('/api/xero/contact-mappings', data),
+  bulkCreateMappings: (mappings: XeroContactMappingCreate[]) =>
+    api.post<XeroContactMapping[]>('/api/xero/contact-mappings/bulk', { mappings }),
+  deleteContactMapping: (id: string) =>
+    api.delete(`/api/xero/contact-mappings/${id}`),
+  refreshFXRates: () =>
+    api.post<{ rates_added: number; currencies: string[]; months_fetched: number; failed_dates: string[] }>('/api/xero/refresh-fx-rates'),
+  syncBankBalances: () =>
+    api.post('/api/xero/sync-bank-balances'),
+};
+
+// ==================== ATS (Heapsbetter) TYPES ====================
+
+export interface ATSStatus {
+  configured: boolean;
+  api_base: string;
+}
+
+export interface ATSPipelineStage {
+  id: string;
+  name: string;
+  candidate_count: number;
+}
+
+export interface ATSJobMetrics {
+  linked: boolean;
+  job_id?: string;
+  applicant_count?: number;
+  stages?: ATSPipelineStage[];
+  synced_at?: string;
+}
+
+export interface ATSCandidate {
+  id: string;
+  name: string;
+  email: string;
+  stage: string;
+  applied_at: string;
+}
+
+export interface PostToATSRequest {
+  work_arrangement?: string;
+  positions_count?: number;
+  salary_min?: number;
+  salary_max?: number;
+  salary_currency?: string;
+  description?: string;
+  responsibilities?: string;
+}
+
+// ==================== ATS (Heapsbetter) API ====================
+
+export const atsApi = {
+  getStatus: () =>
+    api.get<ATSStatus>('/api/ats/status'),
+  listJobs: () =>
+    api.get('/api/ats/jobs'),
+  getJobMetrics: (reqId: string) =>
+    api.get<ATSJobMetrics>(`/api/ats/requisitions/${reqId}/ats-metrics`),
+  postToATS: (reqId: string, data: PostToATSRequest) =>
+    api.post(`/api/ats/requisitions/${reqId}/post-to-ats`, data),
+  unlinkATS: (reqId: string) =>
+    api.delete(`/api/ats/requisitions/${reqId}/unlink-ats`),
+  refreshCache: () =>
+    api.post('/api/ats/cache/refresh'),
 };

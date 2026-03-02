@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Users, Briefcase, ClipboardList, Plus, Calendar, CheckCircle, X, MessageSquare, Trash2, Edit2, Settings } from 'lucide-react';
+import { Users, Briefcase, ClipboardList, Plus, Calendar, CheckCircle, X, MessageSquare, Trash2, Edit2, Settings, ExternalLink } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import { peopleApi } from '../lib/api';
+import { peopleApi, atsApi } from '../lib/api';
 import type {
   Requisition,
   RequisitionCreate,
@@ -12,12 +12,16 @@ import type {
   NewHireCreate,
   OnboardingTemplate,
   OnboardingTemplateCreate,
+  ATSJobMetrics,
+  ATSStatus,
+  PostToATSRequest,
 } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { ChecklistModal } from '../components/people/ChecklistModal';
 import { EditRequisitionModal } from '../components/people/EditRequisitionModal';
 import { CreateRequisitionModal } from '../components/people/CreateRequisitionModal';
 import { ManageRolesModal } from '../components/people/ManageRolesModal';
+import { PostToATSModal } from '../components/people/PostToATSModal';
 
 type TabType = 'requisitions' | 'onboarding' | 'templates';
 
@@ -39,6 +43,10 @@ export function People() {
   const [showCreateTemplateModal, setShowCreateTemplateModal] = useState(false);
   const [showChecklistModal, setShowChecklistModal] = useState(false);
   const [selectedHire, setSelectedHire] = useState<NewHire | null>(null);
+  const [atsMetrics, setAtsMetrics] = useState<Record<string, ATSJobMetrics>>({});
+  const [atsConfigured, setAtsConfigured] = useState(false);
+  const [showPostToATSModal, setShowPostToATSModal] = useState(false);
+  const [postToATSRequisition, setPostToATSRequisition] = useState<Requisition | null>(null);
 
   // Sync tab from URL params
   useEffect(() => {
@@ -66,6 +74,29 @@ export function People() {
         } catch (statsError) {
           console.error('Failed to load requisition stats:', statsError);
           // Continue even if stats fail
+        }
+
+        // Load ATS status
+        try {
+          const atsStatus = await atsApi.getStatus();
+          setAtsConfigured(atsStatus.data.configured);
+
+          // Batch-fetch metrics for linked reqs
+          if (atsStatus.data.configured) {
+            const linkedReqs = reqResponse.data.filter((r: Requisition) => r.heapsbetter_job_id);
+            const metricsMap: Record<string, ATSJobMetrics> = {};
+            await Promise.all(
+              linkedReqs.map(async (r: Requisition) => {
+                try {
+                  const m = await atsApi.getJobMetrics(r.id);
+                  metricsMap[r.id] = m.data;
+                } catch { /* skip failed */ }
+              })
+            );
+            setAtsMetrics(metricsMap);
+          }
+        } catch {
+          console.error('ATS status check failed');
         }
       } else if (activeTab === 'onboarding') {
         const response = await peopleApi.getNewHires();
@@ -120,6 +151,34 @@ export function People() {
     }
   };
 
+  const handlePostToATS = (requisition: Requisition) => {
+    setPostToATSRequisition(requisition);
+    setShowPostToATSModal(true);
+  };
+
+  const handlePostToATSSubmit = async (data: PostToATSRequest) => {
+    if (!postToATSRequisition) return;
+    try {
+      await atsApi.postToATS(postToATSRequisition.id, data);
+      await loadData();
+      setShowPostToATSModal(false);
+      setPostToATSRequisition(null);
+    } catch (error) {
+      console.error('Failed to post to ATS:', error);
+      alert('Failed to post to ATS. Please try again.');
+    }
+  };
+
+  const handleUnlinkATS = async (requisition: Requisition) => {
+    if (!confirm(`Unlink "${requisition.title}" from Heapsbetter ATS? This won't delete the job in Heapsbetter.`)) return;
+    try {
+      await atsApi.unlinkATS(requisition.id);
+      await loadData();
+    } catch (error) {
+      console.error('Failed to unlink ATS:', error);
+    }
+  };
+
   const handleManageRoles = (requisition: Requisition) => {
     setSelectedRequisition(requisition);
     setShowManageRolesModal(true);
@@ -170,7 +229,7 @@ export function People() {
     }
   };
 
-  const isDirectorOrAdmin = user?.role === 'director' || user?.role === 'admin';
+  const isDirectorOrAdmin = user?.role === 'director' || user?.role === 'admin' || user?.role === 'superadmin';
 
   const tabs = [
     { id: 'onboarding' as TabType, label: 'Onboarding', icon: Users },
@@ -238,6 +297,11 @@ export function People() {
               onDelete={handleDeleteRequisition}
               onManageRoles={handleManageRoles}
               canEdit={isDirectorOrAdmin}
+              atsConfigured={atsConfigured}
+              atsMetrics={atsMetrics}
+              onPostToATS={handlePostToATS}
+              onUnlinkATS={handleUnlinkATS}
+              isDirectorOrAdmin={isDirectorOrAdmin}
             />
           )}
           {activeTab === 'onboarding' && (
@@ -285,6 +349,16 @@ export function People() {
           onUpdate={loadData}
         />
       )}
+      {showPostToATSModal && postToATSRequisition && (
+        <PostToATSModal
+          requisition={postToATSRequisition}
+          onClose={() => {
+            setShowPostToATSModal(false);
+            setPostToATSRequisition(null);
+          }}
+          onSubmit={handlePostToATSSubmit}
+        />
+      )}
       {showCreateHireModal && (
         <CreateNewHireModal
           onClose={() => setShowCreateHireModal(false)}
@@ -305,8 +379,8 @@ export function People() {
             setShowChecklistModal(false);
             setSelectedHire(null);
           }}
-          hireId={selectedHire.id}
-          hireName={selectedHire.name}
+          hire={selectedHire}
+          onUpdate={() => loadData()}
         />
       )}
     </div>
@@ -321,6 +395,11 @@ function RequisitionsTab({
   onDelete,
   onManageRoles,
   canEdit,
+  atsConfigured,
+  atsMetrics,
+  onPostToATS,
+  onUnlinkATS,
+  isDirectorOrAdmin,
 }: {
   requisitions: Requisition[];
   stats: RequisitionStats | null;
@@ -328,6 +407,11 @@ function RequisitionsTab({
   onDelete: (req: Requisition) => void;
   onManageRoles: (req: Requisition) => void;
   canEdit: boolean;
+  atsConfigured?: boolean;
+  atsMetrics?: Record<string, ATSJobMetrics>;
+  onPostToATS?: (req: Requisition) => void;
+  onUnlinkATS?: (req: Requisition) => void;
+  isDirectorOrAdmin?: boolean;
 }) {
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
 
@@ -515,6 +599,66 @@ function RequisitionsTab({
                       <div className="mt-2 p-3 bg-gray-50 rounded-lg text-sm text-gray-700 whitespace-pre-wrap">
                         {req.comments}
                       </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ATS Integration Strip */}
+                {atsConfigured && (
+                  <div className="mt-4">
+                    {req.heapsbetter_job_id ? (
+                      // Linked — show teal ATS strip with metrics
+                      <div className="flex items-center gap-3 px-3 py-2 bg-teal-50 border border-teal-200 rounded-lg">
+                        <div className="flex items-center gap-2 text-teal-700 text-sm font-medium">
+                          <Briefcase className="w-4 h-4" />
+                          ATS Linked
+                        </div>
+                        {atsMetrics?.[req.id] && atsMetrics[req.id].linked && (
+                          <>
+                            <span className="text-teal-600 text-sm">
+                              {atsMetrics[req.id].applicant_count} applicant{atsMetrics[req.id].applicant_count !== 1 ? 's' : ''}
+                            </span>
+                            {atsMetrics[req.id].stages?.map((stage) => (
+                              <span
+                                key={stage.id}
+                                className="px-2 py-0.5 text-xs font-medium bg-teal-100 text-teal-700 rounded-full"
+                              >
+                                {stage.name}: {stage.candidate_count}
+                              </span>
+                            ))}
+                          </>
+                        )}
+                        <div className="ml-auto flex items-center gap-2">
+                          <a
+                            href={`https://heapsbetter.ai/jobs/${req.heapsbetter_job_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-teal-600 hover:text-teal-700 text-sm flex items-center gap-1"
+                          >
+                            View in ATS <ExternalLink className="w-3 h-3" />
+                          </a>
+                          {isDirectorOrAdmin && onUnlinkATS && (
+                            <button
+                              onClick={() => onUnlinkATS(req)}
+                              className="text-xs text-gray-400 hover:text-red-500 ml-2"
+                              title="Unlink from ATS"
+                            >
+                              Unlink
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      // Not linked — show post button (director+ only)
+                      isDirectorOrAdmin && onPostToATS && (
+                        <button
+                          onClick={() => onPostToATS(req)}
+                          className="flex items-center gap-2 px-3 py-2 text-sm text-teal-600 border border-dashed border-teal-300 rounded-lg hover:bg-teal-50 hover:border-teal-400 transition-colors"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          Post to Heapsbetter ATS
+                        </button>
+                      )
                     )}
                   </div>
                 )}

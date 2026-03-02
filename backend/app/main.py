@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from .config import CORS_ORIGINS, HOST, PORT
-from .api import contracts, sales, pitch, outreach, auth, users, priorities, people, business_updates, pipeline, onboarding, talent, invoicing, payables, cashflow
+from .api import contracts, sales, pitch, outreach, auth, users, priorities, people, business_updates, pipeline, onboarding, talent, invoicing, payables, cashflow, xero, department_updates, heapsbetter
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -88,6 +88,9 @@ app.include_router(talent.router, prefix="/api/talent", tags=["Talent"])
 app.include_router(invoicing.router, prefix="/api/invoicing", tags=["Invoicing"])
 app.include_router(payables.router, prefix="/api/payables", tags=["Payables"])
 app.include_router(cashflow.router, prefix="/api/cashflow", tags=["Cashflow"])
+app.include_router(xero.router, prefix="/api/xero", tags=["Xero"])
+app.include_router(department_updates.router, prefix="/api")
+app.include_router(heapsbetter.router, prefix="/api/ats", tags=["ATS"])
 
 @app.get("/health")
 async def health_check():
