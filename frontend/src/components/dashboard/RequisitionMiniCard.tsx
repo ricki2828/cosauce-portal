@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import type { Requisition } from '../../lib/api';
-import { Users, MapPin, Calendar, MessageSquarePlus } from 'lucide-react';
+import type { Requisition, ATSJobMetrics } from '../../lib/api';
+import { Users, MapPin, Calendar, MessageSquarePlus, ExternalLink, Briefcase } from 'lucide-react';
 import { peopleApi } from '../../lib/api';
 import AddCommentModal from './AddCommentModal';
 
@@ -8,9 +8,12 @@ interface RequisitionMiniCardProps {
   requisition: Requisition;
   onCommentAdded?: () => void;
   onEdit?: (requisition: Requisition) => void;
+  atsConfigured?: boolean;
+  atsMetrics?: ATSJobMetrics;
+  onPostToATS?: (requisition: Requisition) => void;
 }
 
-export function RequisitionMiniCard({ requisition, onCommentAdded, onEdit }: RequisitionMiniCardProps) {
+export function RequisitionMiniCard({ requisition, onCommentAdded, onEdit, atsConfigured, atsMetrics, onPostToATS }: RequisitionMiniCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const statusColors = {
     open: 'bg-green-100 text-green-800',
@@ -128,6 +131,40 @@ export function RequisitionMiniCard({ requisition, onCommentAdded, onEdit }: Req
           <p className="text-xs text-gray-500">
             — {requisition.latest_comment.author_name}
           </p>
+        </div>
+      )}
+
+      {/* ATS Integration */}
+      {atsConfigured && (
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          {requisition.heapsbetter_job_id ? (
+            <div className="flex items-center gap-2 text-xs">
+              <Briefcase className="w-3 h-3 text-teal-600" />
+              <span className="text-teal-700 font-medium">ATS Linked</span>
+              {atsMetrics?.linked && (
+                <span className="text-teal-600">
+                  {atsMetrics.applicant_count} applicant{atsMetrics.applicant_count !== 1 ? 's' : ''}
+                </span>
+              )}
+              <a
+                href={`https://heapsbetter.ai/jobs/${requisition.heapsbetter_job_id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="ml-auto text-teal-600 hover:text-teal-700 flex items-center gap-0.5"
+              >
+                View <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          ) : onPostToATS && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onPostToATS(requisition); }}
+              className="flex items-center gap-1.5 text-xs text-teal-600 hover:text-teal-700 border border-dashed border-teal-300 rounded px-2 py-1 hover:bg-teal-50 transition-colors w-full justify-center"
+            >
+              <ExternalLink className="w-3 h-3" />
+              Post to Heapsbetter ATS
+            </button>
+          )}
         </div>
       )}
 
